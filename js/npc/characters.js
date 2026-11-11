@@ -73,7 +73,7 @@ export function makeNameSprite(text) {
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
-  sprite.scale.set(2.4, 0.6, 1);
+  sprite.scale.set(3.4, 0.85, 1);
   sprite.position.y = 2.15;
   sprite.renderOrder = 10;
   return sprite;

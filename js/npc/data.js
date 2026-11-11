@@ -17,6 +17,12 @@ const ROLES = [
   { role: 'retired',         gender: 'm', age: 68, occ: 'retired',         home: [-1, -1], work: null,     goals: ['rest', 'help_town'] },
   { role: 'student',         gender: 'm', age: 22, occ: 'student',         home: [0, -2],  work: null,     goals: ['study', 'make_friends'] },
   { role: 'baker',           gender: 'f', age: 52, occ: 'baker',           home: [3, 1],   work: 'cafe',   goals: ['learn_baking', 'help_town'] },
+  { role: 'villager',        gender: 'm', age: 38, occ: 'villager',        home: [-3, 0],  work: null,     goals: ['make_friends', 'help_town'] },
+  { role: 'villager2',       gender: 'f', age: 29, occ: 'villager',        home: [1, 0],   work: null,     goals: ['rest', 'make_friends'] },
+  { role: 'villager',        gender: 'f', age: 61, occ: 'villager',        home: [0, 1],   work: null,     goals: ['rest', 'save_trip'] },
+  { role: 'villager2',       gender: 'm', age: 19, occ: 'villager',        home: [-1, -2], work: null,     goals: ['make_friends', 'study'] },
+  { role: 'villager',        gender: 'm', age: 45, occ: 'villager',        home: [2, -2],  work: null,     goals: ['help_town', 'rest'] },
+  { role: 'villager2',       gender: 'f', age: 33, occ: 'villager',        home: [3, 0],   work: null,     goals: ['save_trip', 'make_friends'] },
 ];
 
 // Relationships (symmetric): [a, b, type, strength]
@@ -27,6 +33,13 @@ const REL_EDGES = [
   [3, 4, 'mentor', 75],
   [0, 3, 'neighbor', 55],
   [0, 1, 'neighbor', 50],
+  [6, 7, 'neighbor', 50],
+  [7, 8, 'friend', 55],
+  [8, 9, 'neighbor', 45],
+  [9, 10, 'friend', 50],
+  [10, 11, 'neighbor', 40],
+  [6, 0, 'neighbor', 45],
+  [8, 2, 'friend', 50],
 ];
 
 function scheduleFor(role) {
@@ -99,6 +112,32 @@ function scheduleFor(role) {
         { from: 17, to: 19, act: 'stroll', place: 'plaza' },
         { from: 19, to: 21, act: 'social', place: 'cafe' },
         { from: 21, to: 22, act: 'shop', place: 'market' },
+        { from: 22, to: 24, act: 'sleep', place: 'home' },
+      ];
+    case 'villager':
+      return [
+        { from: 0, to: 8, act: 'sleep', place: 'home' },
+        { from: 8, to: 9, act: 'ready', place: 'home' },
+        { from: 9, to: 12, act: 'stroll', place: 'plaza' },
+        { from: 12, to: 13, act: 'lunch', place: 'cafe' },
+        { from: 13, to: 16, act: 'shop', place: 'market' },
+        { from: 16, to: 18, act: 'stroll', place: 'park' },
+        { from: 18, to: 20, act: 'social', place: 'bar' },
+        { from: 20, to: 21, act: 'shop', place: 'market' },
+        { from: 21, to: 22, act: 'ready', place: 'home' },
+        { from: 22, to: 24, act: 'sleep', place: 'home' },
+      ];
+    case 'villager2':
+      return [
+        { from: 0, to: 7, act: 'sleep', place: 'home' },
+        { from: 7, to: 9, act: 'ready', place: 'home' },
+        { from: 9, to: 11, act: 'shop', place: 'market' },
+        { from: 11, to: 12, act: 'stroll', place: 'park' },
+        { from: 12, to: 13, act: 'lunch', place: 'cafe' },
+        { from: 13, to: 17, act: 'stroll', place: 'plaza' },
+        { from: 17, to: 19, act: 'social', place: 'cafe' },
+        { from: 19, to: 21, act: 'stroll', place: 'park' },
+        { from: 21, to: 22, act: 'ready', place: 'home' },
         { from: 22, to: 24, act: 'sleep', place: 'home' },
       ];
     default:

@@ -5,9 +5,9 @@
 
 import * as THREE from 'three';
 import { CONFIG, PITCH } from '../core/config.js';
-import { rngFor } from '../core/rng.js';
+import { rngFor, pick, chance } from '../core/rng.js';
 import {
-  inTown, blockToWorld, landmarkAt, houseSpec, streetCoord, BILLBOARDS, PLACES, HALF_X, HALF_Z,
+  inTown, blockToWorld, landmarkAt, lotsOf, streetCoord, BILLBOARDS, PLACES, HALF_X, HALF_Z,
 } from './layout.js';
 
 // Shared (never disposed) assets -------------------------------------------------
@@ -26,7 +26,15 @@ const shared = {
   trunkMat: new THREE.MeshStandardMaterial({ color: 0x6b4a2f, roughness: 1 }),
   foliageMat: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }),
   poleMat: new THREE.MeshStandardMaterial({ color: 0x2e3238, roughness: 0.6, metalness: 0.4 }),
+  carBodyGeo: new THREE.BoxGeometry(1.8, 0.5, 4.2),
+  carCabinGeo: new THREE.BoxGeometry(1.6, 0.45, 2.1),
+  wheelGeo: new THREE.CylinderGeometry(0.32, 0.32, 0.22, 10),
+  chimneyGeo: new THREE.BoxGeometry(0.5, 1.2, 0.5),
+  carCabinMat: new THREE.MeshStandardMaterial({ color: 0x1c2733, roughness: 0.2, metalness: 0.3 }),
+  wheelMat: new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.9 }),
+  chimneyMat: new THREE.MeshStandardMaterial({ color: 0x8a5a4a, roughness: 0.9 }),
 };
+shared.wheelGeo.rotateZ(Math.PI / 2); // wheel axis across the car
 
 export function makeTextTexture(text, { w = 512, h = 128, bg = '#1c2547', fg = '#ffd479', font = 40 } = {}) {
   const c = document.createElement('canvas');
@@ -173,14 +181,19 @@ export class Town {
         sw.position.set(x, 0.02, z);
         sw.receiveShadow = true;
         group.add(sw);
-        const hs = houseSpec(i, j);
-        if (hs) houses.push({ x, z, ...hs });
-        for (let t = 0; t < (hs?.trees || 0); t++) {
-          trees.push({
-            pos: [x + (rng() * 2 - 1) * (PITCH / 2 - 3), 0.85, z + (rng() * 2 - 1) * (PITCH / 2 - 3)],
-            scale: [1, 1, 1], s: 0.8 + rng() * 0.9,
-            color: new THREE.Color(0x3f7a35).offsetHSL((rng() - 0.5) * 0.05, 0, (rng() - 0.5) * 0.08).getHex(),
-          });
+        for (const lot of lotsOf(i, j)) {
+          const lx = x + lot.ox, lz = z + lot.oz;
+          if (lot.kind === 'house') {
+            houses.push({ x: lx, z: lz, w: lot.w, d: lot.d, h: lot.h, wall: lot.wall, roof: lot.roof, rotY: lot.rotY, chimney: lot.chimney });
+          } else {
+            for (let t = 0; t < lot.trees; t++) {
+              trees.push({
+                pos: [lx + (rng() * 2 - 1) * 3.2, 0.85, lz + (rng() * 2 - 1) * 3.2],
+                scale: [1, 1, 1], s: 0.7 + rng() * 0.7,
+                color: new THREE.Color(0x3f7a35).offsetHSL((rng() - 0.5) * 0.05, 0, (rng() - 0.5) * 0.08).getHex(),
+              });
+            }
+          }
         }
       }
     }
@@ -198,6 +211,26 @@ export class Town {
     // billboards inside the chunk
     for (const b of BILLBOARDS) {
       if (b.x >= x0 && b.x <= x0 + span && b.z >= z0 && b.z <= z0 + span) group.add(this.buildBillboard(b));
+    }
+
+    // parked cars along the streets of the chunk
+    const cars = [];
+    const carColors = ['#b03a2e', '#2e4a6e', '#7d8a97', '#c9a24d', '#3a3f4a', '#5a9e5a', '#8a5ac0', '#d97f6a'];
+    for (let i = i0 - 1; i <= i0 + CH; i++) {
+      const lx = streetCoord(i * PITCH);
+      if (lx >= x0 - 0.1 && lx <= x0 + span + 0.1) {
+        for (let j = j0; j < j0 + CH; j++) {
+          const cr = rngFor(CONFIG.seed, 'car', 'v', i, j);
+          if (chance(cr, 0.28)) cars.push({ x: lx - CONFIG.streetWidth / 2 + 1.8, z: j * PITCH + (cr() * 2 - 1) * 8, rotY: 0, color: pick(cr, carColors) });
+        }
+      }
+      const lz = streetCoord(i * PITCH);
+      if (lz >= z0 - 0.1 && lz <= z0 + span + 0.1) {
+        for (let k = i0; k < i0 + CH; k++) {
+          const cr = rngFor(CONFIG.seed, 'car', 'h', i, k);
+          if (chance(cr, 0.28)) cars.push({ x: k * PITCH + (cr() * 2 - 1) * 8, z: lz + CONFIG.streetWidth / 2 - 1.8, rotY: Math.PI / 2, color: pick(cr, carColors) });
+        }
+      }
     }
 
     const walls = this.instanced(shared.wallGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }),
@@ -218,6 +251,31 @@ export class Town {
     const heads = this.instanced(shared.headGeo, this.lampMat,
       lamps.map((l) => ({ pos: [l.pos[0], 4.45, l.pos[2]], scale: [1, 1, 1] })));
     if (heads) { heads.castShadow = false; group.add(heads); }
+
+    // chimneys on some roofs
+    const chimneys = this.instanced(shared.chimneyGeo, shared.chimneyMat,
+      houses.filter((h) => h.chimney).map((h) => ({
+        pos: [h.x + h.w * 0.25 * Math.cos(h.rotY), h.h + 0.7, h.z - h.w * 0.25 * Math.sin(h.rotY)],
+        rotY: h.rotY, scale: [1, 1, 1],
+      })));
+    if (chimneys) group.add(chimneys);
+
+    // parked cars: body (colored), cabin, 4 wheels
+    const carBodies = this.instanced(shared.carBodyGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35, metalness: 0.5 }),
+      cars.map((c) => ({ pos: [c.x, 0.55, c.z], rotY: c.rotY, scale: [1, 1, 1], color: c.color })));
+    if (carBodies) group.add(carBodies);
+    const carCabins = this.instanced(shared.carCabinGeo, shared.carCabinMat,
+      cars.map((c) => ({ pos: [c.x, 0.95, c.z], rotY: c.rotY, scale: [1, 1, 1] })));
+    if (carCabins) group.add(carCabins);
+    const wheelPts = [];
+    for (const c of cars) {
+      const cos = Math.cos(c.rotY), sin = Math.sin(c.rotY);
+      for (const [wx, wz] of [[-0.85, 1.4], [0.85, 1.4], [-0.85, -1.4], [0.85, -1.4]]) {
+        wheelPts.push({ pos: [c.x + wx * cos + wz * sin, 0.32, c.z - wx * sin + wz * cos], rotY: c.rotY, scale: [1, 1, 1] });
+      }
+    }
+    const wheels = this.instanced(shared.wheelGeo, shared.wheelMat, wheelPts);
+    if (wheels) group.add(wheels);
 
     return group;
   }
@@ -248,8 +306,20 @@ export class Town {
       case 'church': return this.buildChurch(x, z);
       case 'market': return this.buildMarket(x, z);
       case 'park': return this.buildPark(x, z);
+      case 'bar': return this.buildBar(x, z);
+      case 'bakery': return this.buildBakery(x, z);
       default: return new THREE.Group();
     }
+  }
+
+  makeStripedAwning(colorA, colorB, w, h) {
+    const c = document.createElement('canvas');
+    c.width = 128; c.height = 32;
+    const ctx = c.getContext('2d');
+    for (let i = 0; i < 8; i++) { ctx.fillStyle = i % 2 ? colorA : colorB; ctx.fillRect(i * 16, 0, 16, 32); }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));
   }
 
   stoneMat() { return new THREE.MeshStandardMaterial({ color: 0x9aa0a8, roughness: 0.9 }); }
@@ -443,6 +513,111 @@ export class Town {
     g.add(bench);
     g.position.set(x, 0, z);
     return g;
+  }
+
+  buildBar(x, z) {
+    const g = new THREE.Group();
+    const box = new THREE.Mesh(new THREE.BoxGeometry(10, 4, 8), new THREE.MeshStandardMaterial({ color: 0x3e5c46, roughness: 0.9 }));
+    box.position.y = 2; box.castShadow = true; box.receiveShadow = true;
+    g.add(box);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(10.6, 0.5, 8.6), new THREE.MeshStandardMaterial({ color: 0x2c2018, roughness: 0.8 }));
+    roof.position.y = 4.25; roof.castShadow = true;
+    g.add(roof);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(7, 1.4),
+      new THREE.MeshStandardMaterial({ map: makeTextTexture('BAR EL FARO', { bg: '#1d2b1f', fg: '#ffd479', font: 44 }) }));
+    sign.position.set(0, 3.2, 4.06);
+    g.add(sign);
+    const awn = this.makeStripedAwning('#3e5c46', '#e8e0d0', 7, 1.6);
+    awn.position.set(0, 2.4, 4.9); awn.rotation.x = -0.5;
+    g.add(awn);
+    for (const wx of [-3, 3]) {
+      const win = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.2), this.windowMat);
+      win.position.set(wx, 1.8, 4.06);
+      g.add(win);
+    }
+    const door = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 2.2), new THREE.MeshStandardMaterial({ color: 0x2c2018 }));
+    door.position.set(0, 1.1, 4.05);
+    g.add(door);
+    g.position.set(x, 0, z);
+    return g;
+  }
+
+  buildBakery(x, z) {
+    const g = new THREE.Group();
+    const box = new THREE.Mesh(new THREE.BoxGeometry(12, 4.5, 9), new THREE.MeshStandardMaterial({ color: 0xd9b98a, roughness: 0.9 }));
+    box.position.y = 2.25; box.castShadow = true; box.receiveShadow = true;
+    g.add(box);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(8.5, 2, 4), new THREE.MeshStandardMaterial({ color: 0x8a4b3a, roughness: 0.85 }));
+    roof.position.y = 5.5; roof.rotation.y = Math.PI / 4; roof.scale.set(1, 1, 0.85); roof.castShadow = true;
+    g.add(roof);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(9, 1.4),
+      new THREE.MeshStandardMaterial({ map: makeTextTexture('PANADERÍA LA ESPIGA', { bg: '#5a3a1d', fg: '#ffe9b0', font: 34 }) }));
+    sign.position.set(0, 3.6, 4.56);
+    g.add(sign);
+    const awn = this.makeStripedAwning('#c9842e', '#f2e6d8', 8, 1.6);
+    awn.position.set(0, 2.6, 5.3); awn.rotation.x = -0.5;
+    g.add(awn);
+    for (const wx of [-3.5, 0, 3.5]) {
+      const win = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.3), this.windowMat);
+      win.position.set(wx, 1.9, 4.56);
+      g.add(win);
+    }
+    const door = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2.4), new THREE.MeshStandardMaterial({ color: 0x4a2f1d }));
+    door.position.set(0, 1.2, 4.55);
+    g.add(door);
+    g.position.set(x, 0, z);
+    return g;
+  }
+}
+
+// ------------------------------------------------------------- traffic ---
+// A few cars driving loops on the central avenues so the town feels alive.
+function buildCarMesh(color) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(shared.carBodyGeo, new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.5 }));
+  body.position.y = 0.55; body.castShadow = true;
+  const cabin = new THREE.Mesh(shared.carCabinGeo, shared.carCabinMat);
+  cabin.position.set(0, 0.95, -0.2); cabin.castShadow = true;
+  g.add(body, cabin);
+  for (const [wx, wz] of [[-0.85, 1.4], [0.85, 1.4], [-0.85, -1.4], [0.85, -1.4]]) {
+    const w = new THREE.Mesh(shared.wheelGeo, shared.wheelMat);
+    w.position.set(wx, 0.32, wz);
+    g.add(w);
+  }
+  return g;
+}
+
+export class Traffic {
+  constructor(scene) {
+    this.cars = [];
+    const colors = ['#b03a2e', '#2e4a6e', '#c9a24d'];
+    const ax = streetCoord(0); // central avenue (constant X line)
+    const routes = [
+      { axis: 'z', fixed: ax - 3, from: -HALF_Z * PITCH, to: HALF_Z * PITCH, dir: 1 },
+      { axis: 'z', fixed: ax + 3, from: HALF_Z * PITCH, to: -HALF_Z * PITCH, dir: -1 },
+      { axis: 'x', fixed: ax + 3, from: -HALF_X * PITCH, to: HALF_X * PITCH, dir: 1 },
+    ];
+    routes.forEach((r, idx) => {
+      const mesh = buildCarMesh(colors[idx % colors.length]);
+      scene.add(mesh);
+      this.cars.push({ mesh, route: r, dist: (idx * 337) % Math.abs(r.to - r.from), speed: 5 + idx });
+    });
+  }
+
+  update(dtMin) {
+    for (const c of this.cars) {
+      const r = c.route;
+      const len = Math.abs(r.to - r.from);
+      c.dist = (c.dist + c.speed * dtMin) % len;
+      const along = r.from + (r.dir === 1 ? c.dist : len - c.dist);
+      if (r.axis === 'z') {
+        c.mesh.position.set(r.fixed, 0, along);
+        c.mesh.rotation.y = r.dir === 1 ? 0 : Math.PI;
+      } else {
+        c.mesh.position.set(along, 0, r.fixed);
+        c.mesh.rotation.y = r.dir === 1 ? Math.PI / 2 : -Math.PI / 2;
+      }
+    }
   }
 }
 

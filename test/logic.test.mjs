@@ -5,7 +5,7 @@ import { CONFIG, PITCH } from '../js/core/config.js';
 import { rngFor, mulberry32, hashString } from '../js/core/rng.js';
 import * as NAMES from '../js/core/names.js';
 import {
-  inTown, blockToWorld, streetCoord, landmarkAt, houseSpec, PLACES,
+  inTown, blockToWorld, streetCoord, landmarkAt, lotsOf, PLACES,
   BILLBOARDS, CITIES, TOWN_NAME, streetNameAt, nearestStreetName, HALF_X, HALF_Z,
 } from '../js/world/layout.js';
 import { NPC_DEFS, scheduleEntryAt, isValidDef } from '../js/npc/data.js';
@@ -51,9 +51,12 @@ import { Agent } from '../js/npc/agents.js';
   }
   const lm = landmarkAt(0, 0);
   assert.equal(lm.id, 'plaza');
-  assert.equal(houseSpec(0, 0), null);
-  const hs = houseSpec(5, 5);
-  assert.ok(hs && hs.w >= 8 && hs.h >= 4);
+  assert.equal(landmarkAt(-2, 1).id, 'bar');
+  assert.equal(landmarkAt(1, -1).id, 'bakery');
+  assert.equal(lotsOf(0, 0).length, 0); // plaza block has no lots
+  const lots = lotsOf(5, 5);
+  assert.ok(lots.length >= 2 && lots.length <= 4, '2x2 lots per block');
+  assert.ok(lots.every((l) => l.kind === 'house' || l.kind === 'garden'));
   assert.ok(BILLBOARDS.length >= 10);
   const sn1 = streetNameAt('x', streetCoord(0));
   const sn2 = streetNameAt('x', streetCoord(0));
@@ -73,6 +76,10 @@ import { Agent } from '../js/npc/agents.js';
   const e = scheduleEntryAt(NPC_DEFS[0], 10);
   assert.equal(e.act, 'work');
   assert.equal(e.place, 'cafe');
+  // at 10:00 everyone is out of home (visible in the world)
+  for (const def of NPC_DEFS) {
+    assert.notEqual(scheduleEntryAt(def, 10).place, 'home', `${def.name} should be out at 10:00`);
+  }
 }
 
 // --- agent simulation: follows the schedule and walks there ---

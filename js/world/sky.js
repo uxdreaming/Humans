@@ -71,6 +71,24 @@ export class Sky {
     this.sunDisc = new THREE.Mesh(new THREE.SphereGeometry(22, 16, 12), new THREE.MeshBasicMaterial({ color: 0xfff3c4, fog: false }));
     this.moonDisc = new THREE.Mesh(new THREE.SphereGeometry(13, 16, 12), new THREE.MeshBasicMaterial({ color: 0xdfe8ff, fog: false }));
     scene.add(this.sunDisc, this.moonDisc);
+
+    // drifting clouds
+    this.cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0.85, flatShading: true });
+    this.clouds = [];
+    for (let i = 0; i < 12; i++) {
+      const c = new THREE.Group();
+      const n = 3 + Math.floor(Math.random() * 3);
+      for (let k = 0; k < n; k++) {
+        const s = new THREE.Mesh(new THREE.SphereGeometry(8 + Math.random() * 10, 8, 6), this.cloudMat);
+        s.position.set((Math.random() - 0.5) * 22, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 10);
+        s.scale.y = 0.45;
+        c.add(s);
+      }
+      c.position.set((Math.random() - 0.5) * 1600, 120 + Math.random() * 50, (Math.random() - 0.5) * 1600);
+      c.userData.baseX = c.position.x;
+      this.clouds.push(c);
+      scene.add(c);
+    }
   }
 
   setQuality(q) {
@@ -115,6 +133,12 @@ export class Sky {
     this.sunDisc.visible = day > 0.02;
     this.moonDisc.position.copy(target).addScaledVector(md, 720);
     this.moonDisc.visible = night > 0.3;
+
+    this.cloudMat.opacity = 0.12 + day * 0.73;
+    for (const c of this.clouds) {
+      c.position.x = c.userData.baseX + (gameMinutes * 0.9) % 1800;
+      if (c.position.x > 900) c.position.x -= 1800;
+    }
 
     return { day, night, hour };
   }

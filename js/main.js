@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { CONFIG } from './core/config.js';
 import { t } from './core/i18n.js';
 import { TOWN_NAME } from './world/layout.js';
-import { Town } from './world/town.js';
+import { Town, Traffic } from './world/town.js';
 import { Sky } from './world/sky.js';
 import { NPC_DEFS } from './npc/data.js';
 import { Agent } from './npc/agents.js';
@@ -32,6 +32,7 @@ const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerH
 setBoot('building town…');
 const town = new Town(scene);
 const sky = new Sky(scene);
+const traffic = new Traffic(scene);
 
 // ------------------------------------------------------------------ agents --
 setBoot('waking up the inhabitants…');
@@ -174,6 +175,7 @@ function frame(now) {
   const skyInfo = sky.update(state.gameMinutes, observer.target);
   town.setNight(skyInfo.night);
   town.update(observer.target.x, observer.target.z);
+  traffic.update(dtGameMin);
 
   for (const a of agents) {
     a.agent.update(dtGameMin, state.gameMinutes);

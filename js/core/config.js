@@ -8,11 +8,11 @@ export const CONFIG = {
   blockSize: 22,           // metres of buildable block (sidewalk included)
   streetWidth: 10,         // metres of road between blocks
   chunkBlocks: 8,          // blocks per render chunk (8x8)
-  renderChunkRadius: 1,    // chunks loaded around the camera chunk (3x3 chunks)
+  renderChunkRadius: 2,    // chunks loaded around the camera chunk (5x5 chunks)
   timeScale: 6,            // game-seconds per real second => 1 game hour = 10 real minutes
-  startHour: 8,            // first game morning starts at 08:00
+  startHour: 10,           // first game morning starts at 10:00 (NPCs already out)
   walkSpeed: 1.1,          // NPC walking speed in metres per game-second
-  npcCount: 6,             // test NPCs in stage 1
+  npcCount: 12,            // test NPCs in stage 1
   maxPopulation: 400,      // long-term population goal
 };
 

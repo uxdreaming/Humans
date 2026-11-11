@@ -28,6 +28,8 @@ export const LANDMARKS = [
   { id: 'church', name: 'Iglesia de Santa Vera',   block: [2, 0],   kind: 'church' },
   { id: 'market', name: 'Supermercado El Centro',  block: [3, -1],  kind: 'market' },
   { id: 'park',   name: 'Parque del Nogal',        block: [-2, -2], kind: 'park'   },
+  { id: 'bar',    name: 'Bar El Faro',             block: [-2, 1],  kind: 'bar'    },
+  { id: 'bakery', name: 'Panadería La Espiga',     block: [1, -1],  kind: 'bakery' },
 ];
 
 const landmarkByBlock = new Map(LANDMARKS.map((l) => [`${l.block[0]},${l.block[1]}`, l]));
@@ -41,7 +43,7 @@ for (const l of LANDMARKS) {
 }
 
 // Where an NPC stands when "at" a place (in front of the building, not inside).
-const SPOT_OFFSETS = { plaza: [0, 0], cafe: [0, 9], church: [0, 9], market: [0, -11], park: [0, 0] };
+const SPOT_OFFSETS = { plaza: [0, 0], cafe: [0, 9], church: [0, 9], market: [0, -11], park: [0, 0], bar: [0, 8], bakery: [0, 8] };
 for (const id of Object.keys(PLACES)) {
   const [dx, dz] = SPOT_OFFSETS[id] || [0, 0];
   PLACES[id].spot = { x: PLACES[id].x + dx, z: PLACES[id].z + dz };
@@ -84,32 +86,37 @@ export const BILLBOARDS = [];
   }
 }
 
-// ---------------------------------------------------------------- houses ---
+// ---------------------------------------------------------------- lots ---
+// Each block is divided into a 2x2 grid of lots: most get a house, some a garden.
 const HOUSE_COLORS = [
   '#e8d5b5', '#d9a066', '#b5c7d9', '#c98f8f', '#a8c686', '#e6c07a',
   '#9d8bc9', '#d97f6a', '#7fb3a0', '#cfc4ae', '#e3b7c6', '#a9b8c9',
 ];
 const ROOF_COLORS = ['#8a4b3a', '#6e4a3a', '#5a4632', '#7a3b3b', '#4a5a6e', '#6b3a4a'];
+const LOT_OFFSETS = [[-5.5, -5.5], [5.5, -5.5], [-5.5, 5.5], [5.5, 5.5]];
 
-const houseCache = new Map();
-export function houseSpec(i, j) {
+const lotsCache = new Map();
+export function lotsOf(i, j) {
   const key = `${i},${j}`;
-  if (houseCache.has(key)) return houseCache.get(key);
-  let spec = null;
+  if (lotsCache.has(key)) return lotsCache.get(key);
+  let lots = [];
   if (inTown(i, j) && !landmarkAt(i, j)) {
-    const rng = rngFor(CONFIG.seed, 'house', i, j);
-    spec = {
-      w: int(rng, 8, 13),
-      d: int(rng, 7, 11),
-      h: int(rng, 4, 7),
-      wall: pick(rng, HOUSE_COLORS),
-      roof: pick(rng, ROOF_COLORS),
-      rotY: chance(rng, 0.5) ? 0 : Math.PI,
-      trees: int(rng, 0, 2),
-    };
+    const rng = rngFor(CONFIG.seed, 'block', i, j);
+    for (const [ox, oz] of LOT_OFFSETS) {
+      if (chance(rng, 0.74)) {
+        lots.push({
+          kind: 'house', ox, oz,
+          w: int(rng, 6.5, 9), d: int(rng, 6, 8.5), h: int(rng, 3.6, 6.8),
+          wall: pick(rng, HOUSE_COLORS), roof: pick(rng, ROOF_COLORS),
+          rotY: chance(rng, 0.5) ? 0 : Math.PI, chimney: chance(rng, 0.5),
+        });
+      } else {
+        lots.push({ kind: 'garden', ox, oz, trees: int(rng, 1, 2) });
+      }
+    }
   }
-  houseCache.set(key, spec);
-  return spec;
+  lotsCache.set(key, lots);
+  return lots;
 }
 
 // ------------------------------------------------------------ stroll spots ---

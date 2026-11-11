@@ -43,7 +43,10 @@ export class Agent {
   }
 
   placePos(placeId) {
-    if (placeId === 'home') return blockToWorld(this.def.homeBlock[0], this.def.homeBlock[1]);
+    if (placeId === 'home') {
+      const h = blockToWorld(this.def.homeBlock[0], this.def.homeBlock[1]);
+      return { x: h.x, z: h.z + 10.5 }; // in front of the house, on the sidewalk
+    }
     const p = PLACES[placeId];
     return p ? (p.spot || { x: p.x, z: p.z }) : { x: 0, z: 0 };
   }
