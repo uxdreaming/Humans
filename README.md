@@ -35,18 +35,32 @@ affect later lives.
 - Modular structure designed to grow:
 
   ```
-  index.html
-  css/style.css
+  index.html            entry page + importmap (three -> vendor/three/three.module.js)
+  css/style.css         HUD, panel and boot screen styles
+  package.json          ES modules + scripts (serve / test), no dependencies
   js/
-    main.js       entry point and game loop
-    core/         game state, clock, local save, world events
-    world/        village generation, buildings, nature, lighting
-    npc/          character data, state, routines, relationships, memories
-    player/       observation camera, select/follow, 1st/3rd person control
-    ui/           HUD, NPC panel, menus, graphics quality, fullscreen
-    time/         day/night cycle (1 game hour = 10 real minutes)
-    ai/           conversation module (local demo first; AI backend later)
-  vendor/three/   vendored 3D engine
+    main.js             entry point and game loop
+    core/
+      config.js         all tuning constants (world seed, 30x50 blocks, time scale...)
+      rng.js            seeded deterministic RNG
+      names.js          procedural name generator (people, streets, ads, cities)
+      i18n.js           UI strings, Spanish (default) + English
+    world/
+      layout.js         pure world layout: block grid, streets, landmarks, names
+      town.js           chunk-streamed 3D town (houses, roads, lamps, billboards)
+      sky.js            day/night cycle: sun, moon, stars, fog, lamp lights
+    npc/
+      data.js           NPC definitions: identity, personality, schedule, relations
+      agents.js         schedule-driven agents: movement, needs, mood (pure logic)
+      characters.js     low-poly humanoid meshes + walk/sit animation
+    player/
+      camera.js         observation camera (free orbit + follow mode)
+      picking.js        click-to-select NPC raycasting
+    ui/
+      hud.js            top bar: clock, time controls, quality, language, fullscreen
+      panel.js          NPC inspector panel
+  test/logic.test.mjs   Node tests for the pure modules (npm test)
+  vendor/three/         vendored Three.js r160 (three.module.js + LICENSE)
   ```
 
 - **No API keys or secrets in the client.** If an AI API is connected for conversations,
@@ -171,13 +185,13 @@ respect the NPC's personality and memories.
 
 ## Current status and staged plan
 
-Actual repository status: **documentation only** (this README) and the license. No code
-stage is implemented yet; what follows is the plan, not existing code.
+Actual repository status: Stage 0 (docs) and **Stage 1 (playable 3D village prototype)**
+are implemented and tested; stages 2-7 are plan, not code.
 
 | Stage | Description | Status |
 |-------|-------------|--------|
 | 0 | Project documentation | ✅ done |
-| 1 | Visual village prototype: explorable 3D world, NPCs with routines and personalities, day/night cycle, observation mode (select/follow NPC) and character profile | ⏳ pending |
+| 1 | Visual village prototype: explorable 3D world, NPCs with routines and personalities, day/night cycle, observation mode (select/follow NPC) and character profile | ✅ done |
 | 2 | First playable life: third-person control, game clock, playable supermarket job, boss/coworker reactions | ⏳ pending |
 | 3 | Relationships, contacts, and memories; contextual text conversations; café scene; modular architecture for AI and voice; basic phone | ⏳ pending |
 | 4 | Daily life: shopping, inventory, basic economy, housing and decoration, parties, save system and offline simulation, fictional lottery | ⏳ pending |
@@ -197,15 +211,47 @@ stage is implemented yet; what follows is the plan, not existing code.
 
 ## How to run
 
-There is no application to run yet (Stage 0). When the first playable version exists
-(Stage 1), it will be a static app servable with any static file server, for example:
+The game is a static web app (no build step). From the repository root:
 
 ```bash
-python3 -m http.server 8000
-# open http://localhost:8000
+npm run serve          # = python3 -m http.server 8000
+# then open http://localhost:8000
 ```
 
+Any static file server works (it will also be deployable as-is on static hosting).
 Requirement: a modern browser with WebGL.
+
+Run the logic tests (no browser needed):
+
+```bash
+npm test               # = node test/logic.test.mjs
+```
+
+### Stage 1 controls
+
+- **Click an NPC** to open its inspector panel (identity, personality, occupation,
+  current activity, location, mood, needs, goals, relationships).
+- **Follow** button or **F**: camera follows the selected NPC. **Esc**: deselect / stop following.
+- **WASD**: move the camera focus · **drag**: orbit · **wheel**: zoom.
+- Top bar: **pause / 1x / 2x / 4x** time controls (1 game hour = 10 real minutes),
+  **quality** (low/medium/high: shadows + pixel ratio), **ES/EN** language toggle,
+  **fullscreen**.
+
+### Stage 1 — implemented vs. known limitations
+
+Implemented: procedural town of 30x50 blocks (seeded, always the same town) with plaza
+and fountain, café, church, supermarket, park, houses, streets, lamps and generated
+billboards; seeded name generator (people, streets, billboards, city list; the starting
+town is generated too); 6 NPCs with schedules, personalities, needs, moods, goals and
+relationships that live their routines on their own; day/night cycle with sun, moon,
+stars, fog and street lamps; chunk streaming so only the visible area is rendered;
+observation mode with select + follow + live inspector panel; bilingual UI (ES/EN);
+quality settings; fullscreen.
+
+Known limitations (by design, next stages): NPCs walk but don't yet talk (Stage 3), there
+is no "take control" of a character yet (Stage 2 — the button is visible but disabled),
+no saving/offline simulation yet (Stage 4), no cars/travel (Stage 6), population is 6 of
+the planned 400, and only the chunks around the camera are rendered.
 
 ## Deployment
 
