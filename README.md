@@ -185,14 +185,15 @@ respect the NPC's personality and memories.
 
 ## Current status and staged plan
 
-Actual repository status: Stage 0 (docs) and **Stage 1 (playable 3D village prototype)**
-are implemented and tested; stages 2-7 are plan, not code.
+Actual repository status: Stage 0 (docs), **Stage 1 (playable 3D village prototype)**
+and **Stage 2 (first playable life: control an NPC + supermarket job)** are implemented
+and tested; stages 3-7 are plan, not code.
 
 | Stage | Description | Status |
 |-------|-------------|--------|
 | 0 | Project documentation | ✅ done |
 | 1 | Visual village prototype: explorable 3D world, NPCs with routines and personalities, day/night cycle, observation mode (select/follow NPC) and character profile | ✅ done |
-| 2 | First playable life: third-person control, game clock, playable supermarket job, boss/coworker reactions | ⏳ pending |
+| 2 | First playable life: third-person control (V = first person), game clock, playable supermarket job (restock/serve/organize with E), lateness and boss approval, money | ✅ done |
 | 3 | Relationships, contacts, and memories; contextual text conversations; café scene; modular architecture for AI and voice; basic phone | ⏳ pending |
 | 4 | Daily life: shopping, inventory, basic economy, housing and decoration, parties, save system and offline simulation, fictional lottery | ⏳ pending |
 | 5 | Lives and persistent world: aging, death, new life, inheritable lessons, persistent consequences | ⏳ pending |
@@ -227,15 +228,27 @@ Run the logic tests (no browser needed):
 npm test               # = node test/logic.test.mjs
 ```
 
-### Stage 1 controls
+### Controls
 
-- **Click an NPC** to open its inspector panel (identity, personality, occupation,
-  current activity, location, mood, needs, goals, relationships).
-- **Follow** button or **F**: camera follows the selected NPC. **Esc**: deselect / stop following.
+Observation mode:
+- **Click an NPC** (or pick it in the **inhabitants dropdown**) to open its inspector
+  panel (identity, personality, occupation, activity, location, mood, needs, money,
+  boss approval, goals, relationships) and jump the camera to it.
+- **Follow** button or **F**: camera follows the selected NPC. **Esc**: deselect.
 - **WASD**: move the camera focus · **drag**: orbit · **wheel**: zoom.
-- Top bar: **pause / 1x / 2x / 4x** time controls (1 game hour = 10 real minutes),
-  **quality** (low/medium/high: shadows + pixel ratio), **ES/EN** language toggle,
-  **fullscreen**.
+
+Playing a life (stage 2):
+- In the NPC panel, **Take control** to play that person: **WASD** move, **Shift** run,
+  **drag** orbit camera, **V** first/third person, **Esc** or **Release control** to go
+  back to observation.
+- If that NPC works at the supermarket and you are on shift there, a work bar appears:
+  go to a station (shelves / counter / storage) and press **E** repeatedly to do the
+  task (restock, serve, organize). Tasks pay money and raise boss approval; arriving
+  25+ min late lowers it. Salary is paid per worked hour when the shift block ends.
+
+Top bar (always): **pause / 1x / 2x / 4x** time controls (1 game hour = 10 real
+minutes), **quality** (low/medium/high: shadows + pixel ratio), **ES/EN** language
+toggle, **fullscreen**.
 
 ### Stage 1 — implemented vs. known limitations
 
@@ -254,11 +267,11 @@ dropdown in the HUD that jumps the camera to any NPC, plus a pulsing marker over
 NPC; chunk streaming so only the visible area is rendered; observation mode with select +
 follow + live inspector panel; bilingual UI (ES/EN); quality settings; fullscreen.
 
-Known limitations (by design, next stages): NPCs walk but don't yet talk (Stage 3), there
-is no "take control" of a character yet (Stage 2 — the button is visible but disabled),
-no saving/offline simulation yet (Stage 4), cars are parked/traffic only — no drivable
-car or travel yet (Stage 6), population is 27 of the planned 400, and only the chunks
-around the camera are rendered.
+Known limitations (by design, next stages): NPCs don't talk yet (Stage 3 — contextual
+conversations + café scene + phone), no saving/offline simulation yet (Stage 4 — money
+and approval are session-only for now), work tasks exist only at the supermarket,
+cars are parked/traffic only — no drivable car or travel yet (Stage 6), population is
+27 of the planned 400, and only the chunks around the camera are rendered.
 
 ## Deployment
 
