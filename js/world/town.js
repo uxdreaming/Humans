@@ -30,9 +30,16 @@ const shared = {
   carCabinGeo: new THREE.BoxGeometry(1.6, 0.45, 2.1),
   wheelGeo: new THREE.CylinderGeometry(0.32, 0.32, 0.22, 10),
   chimneyGeo: new THREE.BoxGeometry(0.5, 1.2, 0.5),
+  doorGeo: new THREE.BoxGeometry(1.2, 2, 0.12),
+  windowBoxGeo: new THREE.BoxGeometry(0.9, 1, 0.1),
+  zebraGeo: new THREE.BoxGeometry(CONFIG.streetWidth - 1.5, 0.04, 0.45),
+  bushGeo: new THREE.SphereGeometry(0.7, 7, 6),
   carCabinMat: new THREE.MeshStandardMaterial({ color: 0x1c2733, roughness: 0.2, metalness: 0.3 }),
   wheelMat: new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.9 }),
   chimneyMat: new THREE.MeshStandardMaterial({ color: 0x8a5a4a, roughness: 0.9 }),
+  doorMat: new THREE.MeshStandardMaterial({ color: 0x4a2f1d, roughness: 0.9 }),
+  zebraMat: new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 1 }),
+  bushMat: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }),
 };
 shared.wheelGeo.rotateZ(Math.PI / 2); // wheel axis across the car
 
@@ -169,7 +176,7 @@ export class Town {
       }
     }
 
-    const houses = [], trees = [], lamps = [];
+    const houses = [], trees = [], lamps = [], bushes = [];
     for (let i = i0; i < i0 + CH; i++) {
       for (let j = j0; j < j0 + CH; j++) {
         if (!inTown(i, j)) continue;
@@ -193,7 +200,23 @@ export class Town {
                 color: new THREE.Color(0x3f7a35).offsetHSL((rng() - 0.5) * 0.05, 0, (rng() - 0.5) * 0.08).getHex(),
               });
             }
+            for (let b = 0; b < lot.bushes; b++) {
+              bushes.push({
+                pos: [lx + (rng() * 2 - 1) * 3.6, 0.35, lz + (rng() * 2 - 1) * 3.6],
+                s: 0.7 + rng() * 0.5,
+                color: new THREE.Color(0x35682c).offsetHSL((rng() - 0.5) * 0.04, 0, (rng() - 0.5) * 0.08).getHex(),
+              });
+            }
           }
+        }
+        // occasional street tree on the sidewalk corner
+        const tr = rngFor(CONFIG.seed, 'streetree', i, j);
+        if (chance(tr, 0.12)) {
+          trees.push({
+            pos: [x + PITCH / 2 - 2.5, 0.85, z - PITCH / 2 + 2.5],
+            scale: [1, 1, 1], s: 0.9 + tr() * 0.4,
+            color: new THREE.Color(0x3f7a35).offsetHSL((tr() - 0.5) * 0.05, 0, (tr() - 0.5) * 0.08).getHex(),
+          });
         }
       }
     }
@@ -211,6 +234,22 @@ export class Town {
     // billboards inside the chunk
     for (const b of BILLBOARDS) {
       if (b.x >= x0 && b.x <= x0 + span && b.z >= z0 && b.z <= z0 + span) group.add(this.buildBillboard(b));
+    }
+
+    // zebra crossings at the central intersections (|i|,|j| <= 2)
+    const zebra = [];
+    for (let i = i0 - 1; i <= i0 + CH; i++) {
+      for (let j = j0 - 1; j <= j0 + CH; j++) {
+        if (Math.abs(i) > 2 || Math.abs(j) > 2) continue;
+        const x = streetCoord(i * PITCH), z = streetCoord(j * PITCH);
+        if (x < x0 || x > x0 + span || z < z0 || z > z0 + span) continue;
+        for (let k = 0; k < 5; k++) {
+          zebra.push({ pos: [x, 0.045, z - CONFIG.streetWidth / 2 - 0.7 - k * 0.85], rotY: 0, scale: [1, 1, 1] });
+          zebra.push({ pos: [x, 0.045, z + CONFIG.streetWidth / 2 + 0.7 + k * 0.85], rotY: 0, scale: [1, 1, 1] });
+          zebra.push({ pos: [x - CONFIG.streetWidth / 2 - 0.7 - k * 0.85, 0.045, z], rotY: Math.PI / 2, scale: [1, 1, 1] });
+          zebra.push({ pos: [x + CONFIG.streetWidth / 2 + 0.7 + k * 0.85, 0.045, z], rotY: Math.PI / 2, scale: [1, 1, 1] });
+        }
+      }
     }
 
     // parked cars along the streets of the chunk
@@ -239,6 +278,34 @@ export class Town {
     const roofs = this.instanced(shared.roofGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 }),
       houses.map((h) => ({ pos: [h.x, h.h + 0.01, h.z], rotY: h.rotY + Math.PI / 4, scale: [h.w * 0.78, h.h * 0.55 + 1.2, h.d * 0.78], color: h.roof })));
     if (roofs) group.add(roofs);
+
+    // house doors + windows (windows glow at night via town.windowMat)
+    const doors = this.instanced(shared.doorGeo, shared.doorMat,
+      houses.map((h) => {
+        const cos = Math.cos(h.rotY), sin = Math.sin(h.rotY);
+        const fz = h.d / 2 + 0.07;
+        return { pos: [h.x + sin * fz, 1.0, h.z + cos * fz], rotY: h.rotY, scale: [1, 1, 1] };
+      }));
+    if (doors) group.add(doors);
+    const winPts = [];
+    for (const h of houses) {
+      const cos = Math.cos(h.rotY), sin = Math.sin(h.rotY);
+      const fz = h.d / 2 + 0.06;
+      for (const wx of [-h.w * 0.25, h.w * 0.25]) {
+        winPts.push({ pos: [h.x + wx * cos + fz * sin, h.h * 0.55, h.z - wx * sin + fz * cos], rotY: h.rotY, scale: [1, 1, 1] });
+      }
+    }
+    const wins = this.instanced(shared.windowBoxGeo, this.windowMat, winPts);
+    if (wins) { wins.castShadow = false; group.add(wins); }
+
+    // garden bushes
+    const bushMeshes = this.instanced(shared.bushGeo, shared.bushMat,
+      bushes.map((b) => ({ pos: [b.pos[0], b.pos[1], b.pos[2]], scale: [b.s, b.s * 0.6, b.s], color: b.color })));
+    if (bushMeshes) group.add(bushMeshes);
+
+    // crosswalks
+    const zebraMesh = this.instanced(shared.zebraGeo, shared.zebraMat, zebra);
+    if (zebraMesh) { zebraMesh.castShadow = false; zebraMesh.receiveShadow = true; group.add(zebraMesh); }
     const trunks = this.instanced(shared.trunkGeo, shared.trunkMat,
       trees.map((t) => ({ pos: [t.pos[0], 0, t.pos[2]], scale: [t.s, t.s, t.s] })));
     if (trunks) group.add(trunks);
@@ -308,6 +375,7 @@ export class Town {
       case 'park': return this.buildPark(x, z);
       case 'bar': return this.buildBar(x, z);
       case 'bakery': return this.buildBakery(x, z);
+      case 'busstop': return this.buildBusStop(x, z);
       default: return new THREE.Group();
     }
   }
@@ -565,6 +633,31 @@ export class Town {
     const door = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2.4), new THREE.MeshStandardMaterial({ color: 0x4a2f1d }));
     door.position.set(0, 1.2, 4.55);
     g.add(door);
+    g.position.set(x, 0, z);
+    return g;
+  }
+
+  buildBusStop(x, z) {
+    const g = new THREE.Group();
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(5, 0.15, 2.2), new THREE.MeshStandardMaterial({ color: 0x3a6ea5, roughness: 0.6 }));
+    roof.position.set(0, 2.4, 0);
+    roof.castShadow = true;
+    g.add(roof);
+    for (const [px, pz] of [[-2.2, -0.9], [2.2, -0.9], [-2.2, 0.9], [2.2, 0.9]]) {
+      const post = new THREE.Mesh(shared.poleGeo, shared.poleMat);
+      post.position.set(px, 1.2, pz);
+      post.scale.set(1, 0.55, 1);
+      g.add(post);
+    }
+    const bench = new THREE.Mesh(new THREE.BoxGeometry(3, 0.12, 0.5), new THREE.MeshStandardMaterial({ color: 0x7a5a36, roughness: 0.9 }));
+    bench.position.set(0, 0.45, 0.6);
+    bench.castShadow = true;
+    g.add(bench);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.8),
+      new THREE.MeshStandardMaterial({ map: makeTextTexture('AUTOBÚS', { bg: '#3a6ea5', fg: '#ffffff', font: 44 }) }));
+    sign.position.set(2.9, 1.9, 0);
+    sign.rotation.y = Math.PI / 2;
+    g.add(sign);
     g.position.set(x, 0, z);
     return g;
   }

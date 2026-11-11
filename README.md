@@ -240,20 +240,21 @@ npm test               # = node test/logic.test.mjs
 ### Stage 1 — implemented vs. known limitations
 
 Implemented: procedural town of 30x50 blocks (seeded, always the same town) with plaza
-and fountain, café, church, supermarket, park, bar, bakery, up to 4 houses/gardens per
-block with chimneys, streets with parked cars plus moving traffic on the central avenue,
-lamps and generated billboards; seeded name generator (people, streets, billboards, city
-list; the starting town is generated too); 12 NPCs with schedules, personalities, needs,
-moods, goals and relationships that live their routines on their own (the game starts at
-10:00 so they are already out); day/night cycle with sun, moon, stars, drifting clouds,
-fog and street lamps; chunk streaming so only the visible area is rendered; observation
-mode with select + follow + live inspector panel; bilingual UI (ES/EN); quality settings;
-fullscreen.
+and fountain, café, church, supermarket, park, bar, bakery and a bus stop; up to 4
+houses/gardens per block (chimneys, doors, windows that glow at night, bushes, street
+trees), streets with zebra crossings near the centre, parked cars plus moving traffic on
+the central avenue, lamps and generated billboards; seeded name generator (people,
+streets, billboards, city list; the starting town is generated too); 24 NPCs with
+schedules, personalities, needs, moods, goals and relationships that live their routines
+on their own (the game starts at 10:00 so they are already out); day/night cycle with
+sun, moon, stars, drifting clouds, fog and street lamps; chunk streaming so only the
+visible area is rendered; observation mode with select + follow + live inspector panel;
+bilingual UI (ES/EN); quality settings; fullscreen.
 
 Known limitations (by design, next stages): NPCs walk but don't yet talk (Stage 3), there
 is no "take control" of a character yet (Stage 2 — the button is visible but disabled),
 no saving/offline simulation yet (Stage 4), cars are parked/traffic only — no drivable
-car or travel yet (Stage 6), population is 12 of the planned 400, and only the chunks
+car or travel yet (Stage 6), population is 24 of the planned 400, and only the chunks
 around the camera are rendered.
 
 ## Deployment

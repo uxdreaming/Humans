@@ -44,6 +44,7 @@ export const STR = {
       cafe_owner: 'Dueña del café', market_manager: 'Gerente del supermercado',
       cashier: 'Cajera del supermercado', retired: 'Jubilado', student: 'Estudiante',
       baker: 'Panadera', villager: 'Vecino/a',
+      stocker: 'Reponedor/a del supermercado', barkeep: 'Camarero/a del bar',
     },
     traits: {
       friendly: 'amable', shy: 'tímido/a', grumpy: 'gruñón/a', curious: 'curioso/a',
@@ -62,7 +63,7 @@ export const STR = {
     places: {
       home: 'Su casa', plaza: 'Plaza Mayor', cafe: 'Café La Esquina',
       market: 'Supermercado El Centro', park: 'Parque del Nogal', church: 'Iglesia de Santa Vera',
-      bar: 'Bar El Faro', bakery: 'Panadería La Espiga',
+      bar: 'Bar El Faro', bakery: 'Panadería La Espiga', busstop: 'Parada de autobús',
     },
   },
   en: {
@@ -104,6 +105,7 @@ export const STR = {
       cafe_owner: 'Café owner', market_manager: 'Supermarket manager',
       cashier: 'Supermarket cashier', retired: 'Retired', student: 'Student',
       baker: 'Baker', villager: 'Villager',
+      stocker: 'Supermarket stocker', barkeep: 'Barkeep',
     },
     traits: {
       friendly: 'friendly', shy: 'shy', grumpy: 'grumpy', curious: 'curious',
@@ -122,7 +124,7 @@ export const STR = {
     places: {
       home: 'Home', plaza: 'Main Plaza', cafe: 'La Esquina Café',
       market: 'El Centro Supermarket', park: 'Nogal Park', church: 'Santa Vera Church',
-      bar: 'El Faro Bar', bakery: 'La Espiga Bakery',
+      bar: 'El Faro Bar', bakery: 'La Espiga Bakery', busstop: 'Bus stop',
     },
   },
 };

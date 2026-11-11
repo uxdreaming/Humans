@@ -23,6 +23,18 @@ const ROLES = [
   { role: 'villager2',       gender: 'm', age: 19, occ: 'villager',        home: [-1, -2], work: null,     goals: ['make_friends', 'study'] },
   { role: 'villager',        gender: 'm', age: 45, occ: 'villager',        home: [2, -2],  work: null,     goals: ['help_town', 'rest'] },
   { role: 'villager2',       gender: 'f', age: 33, occ: 'villager',        home: [3, 0],   work: null,     goals: ['save_trip', 'make_friends'] },
+  { role: 'worker_market',   gender: 'm', age: 31, occ: 'stocker',         home: [-3, 1],  work: 'market', goals: ['save_trip', 'rest'] },
+  { role: 'villager',        gender: 'f', age: 24, occ: 'villager',        home: [-3, -1], work: null,     goals: ['make_friends', 'help_town'] },
+  { role: 'worker_bar',      gender: 'f', age: 27, occ: 'barkeep',         home: [4, 0],   work: 'bar',    goals: ['make_friends', 'save_trip'] },
+  { role: 'villager2',       gender: 'm', age: 55, occ: 'villager',        home: [4, 1],   work: null,     goals: ['rest', 'help_town'] },
+  { role: 'villager',        gender: 'f', age: 41, occ: 'villager',        home: [4, -1],  work: null,     goals: ['save_trip', 'rest'] },
+  { role: 'worker_market',   gender: 'f', age: 24, occ: 'stocker',         home: [-4, 0],  work: 'market', goals: ['study', 'make_friends'] },
+  { role: 'villager2',       gender: 'm', age: 35, occ: 'villager',        home: [-4, 1],  work: null,     goals: ['make_friends', 'rest'] },
+  { role: 'villager',        gender: 'f', age: 47, occ: 'villager',        home: [0, 2],   work: null,     goals: ['help_town', 'rest'] },
+  { role: 'villager2',       gender: 'm', age: 28, occ: 'villager',        home: [1, 3],   work: null,     goals: ['make_friends', 'study'] },
+  { role: 'villager',        gender: 'f', age: 36, occ: 'villager',        home: [-1, 2],  work: null,     goals: ['save_trip', 'help_town'] },
+  { role: 'worker_bar',      gender: 'm', age: 30, occ: 'barkeep',         home: [2, 2],   work: 'bar',    goals: ['rest', 'make_friends'] },
+  { role: 'villager2',       gender: 'f', age: 52, occ: 'villager',        home: [3, 2],   work: null,     goals: ['rest', 'save_trip'] },
 ];
 
 // Relationships (symmetric): [a, b, type, strength]
@@ -40,6 +52,14 @@ const REL_EDGES = [
   [10, 11, 'neighbor', 40],
   [6, 0, 'neighbor', 45],
   [8, 2, 'friend', 50],
+  [12, 1, 'coworker', 60],
+  [12, 2, 'coworker', 55],
+  [17, 1, 'coworker', 60],
+  [14, 0, 'neighbor', 45],
+  [22, 14, 'coworker', 65],
+  [13, 19, 'friend', 50],
+  [15, 18, 'neighbor', 45],
+  [20, 21, 'friend', 55],
 ];
 
 function scheduleFor(role) {
@@ -139,6 +159,26 @@ function scheduleFor(role) {
         { from: 19, to: 21, act: 'stroll', place: 'park' },
         { from: 21, to: 22, act: 'ready', place: 'home' },
         { from: 22, to: 24, act: 'sleep', place: 'home' },
+      ];
+    case 'worker_market':
+      return [
+        { from: 0, to: 7, act: 'sleep', place: 'home' },
+        { from: 7, to: 8, act: 'ready', place: 'home' },
+        { from: 8, to: 12, act: 'work', place: 'market' },
+        { from: 12, to: 13, act: 'lunch', place: 'cafe' },
+        { from: 13, to: 17, act: 'work', place: 'market' },
+        { from: 17, to: 19, act: 'stroll', place: 'plaza' },
+        { from: 19, to: 21, act: 'social', place: 'cafe' },
+        { from: 21, to: 22, act: 'ready', place: 'home' },
+        { from: 22, to: 24, act: 'sleep', place: 'home' },
+      ];
+    case 'worker_bar':
+      return [
+        { from: 0, to: 10, act: 'sleep', place: 'home' },
+        { from: 10, to: 12, act: 'ready', place: 'home' },
+        { from: 12, to: 20, act: 'work', place: 'bar' },
+        { from: 20, to: 21, act: 'stroll', place: 'plaza' },
+        { from: 21, to: 24, act: 'sleep', place: 'home' },
       ];
     default:
       return [{ from: 0, to: 24, act: 'stroll', place: 'plaza' }];

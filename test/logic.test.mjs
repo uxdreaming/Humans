@@ -53,6 +53,7 @@ import { Agent } from '../js/npc/agents.js';
   assert.equal(lm.id, 'plaza');
   assert.equal(landmarkAt(-2, 1).id, 'bar');
   assert.equal(landmarkAt(1, -1).id, 'bakery');
+  assert.equal(landmarkAt(-1, 0).id, 'busstop');
   assert.equal(lotsOf(0, 0).length, 0); // plaza block has no lots
   const lots = lotsOf(5, 5);
   assert.ok(lots.length >= 2 && lots.length <= 4, '2x2 lots per block');
@@ -76,9 +77,14 @@ import { Agent } from '../js/npc/agents.js';
   const e = scheduleEntryAt(NPC_DEFS[0], 10);
   assert.equal(e.act, 'work');
   assert.equal(e.place, 'cafe');
-  // at 10:00 everyone is out of home (visible in the world)
+  // at 14:00 everyone is out of home (visible in the world)
   for (const def of NPC_DEFS) {
-    assert.notEqual(scheduleEntryAt(def, 10).place, 'home', `${def.name} should be out at 10:00`);
+    assert.notEqual(scheduleEntryAt(def, 14).place, 'home', `${def.name} should be out at 14:00`);
+  }
+  // all homes are valid town blocks without landmarks
+  for (const def of NPC_DEFS) {
+    assert.ok(inTown(def.homeBlock[0], def.homeBlock[1]), `home of ${def.name} in town`);
+    assert.equal(landmarkAt(def.homeBlock[0], def.homeBlock[1]), null, `home of ${def.name} not on a landmark`);
   }
 }
 

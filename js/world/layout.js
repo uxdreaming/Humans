@@ -30,6 +30,7 @@ export const LANDMARKS = [
   { id: 'park',   name: 'Parque del Nogal',        block: [-2, -2], kind: 'park'   },
   { id: 'bar',    name: 'Bar El Faro',             block: [-2, 1],  kind: 'bar'    },
   { id: 'bakery', name: 'Panadería La Espiga',     block: [1, -1],  kind: 'bakery' },
+  { id: 'busstop', name: 'Parada de Autobús',      block: [-1, 0],  kind: 'busstop' },
 ];
 
 const landmarkByBlock = new Map(LANDMARKS.map((l) => [`${l.block[0]},${l.block[1]}`, l]));
@@ -43,7 +44,7 @@ for (const l of LANDMARKS) {
 }
 
 // Where an NPC stands when "at" a place (in front of the building, not inside).
-const SPOT_OFFSETS = { plaza: [0, 0], cafe: [0, 9], church: [0, 9], market: [0, -11], park: [0, 0], bar: [0, 8], bakery: [0, 8] };
+const SPOT_OFFSETS = { plaza: [0, 0], cafe: [0, 9], church: [0, 9], market: [0, -11], park: [0, 0], bar: [0, 8], bakery: [0, 8], busstop: [0, 7] };
 for (const id of Object.keys(PLACES)) {
   const [dx, dz] = SPOT_OFFSETS[id] || [0, 0];
   PLACES[id].spot = { x: PLACES[id].x + dx, z: PLACES[id].z + dz };
@@ -111,7 +112,7 @@ export function lotsOf(i, j) {
           rotY: chance(rng, 0.5) ? 0 : Math.PI, chimney: chance(rng, 0.5),
         });
       } else {
-        lots.push({ kind: 'garden', ox, oz, trees: int(rng, 1, 2) });
+        lots.push({ kind: 'garden', ox, oz, trees: int(rng, 1, 2), bushes: int(rng, 1, 2) });
       }
     }
   }
