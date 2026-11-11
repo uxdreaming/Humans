@@ -8,6 +8,7 @@ export function createHud(cb) {
     <span class="brand">HUMANS</span>
     <span class="town" data-k="town"></span>
     <span class="pop" data-k="pop"></span>
+    <select id="hud-npcs"></select>
     <span class="spacer"></span>
     <span class="clock" data-k="clock"></span>
     <button data-k="pause" id="hud-pause"></button>
@@ -34,8 +35,15 @@ export function createHud(cb) {
   langBtn.addEventListener('click', () => cb.onLangToggle());
   fsBtn.addEventListener('click', () => cb.onFullscreen());
   document.addEventListener('fullscreenchange', () => update(lastState));
+  const npcSel = $('#hud-npcs');
+  npcSel.addEventListener('change', () => { cb.onSelectNpc(Number(npcSel.value)); npcSel.value = ''; });
 
   let lastState = null;
+
+  function setNpcs(list, lang) {
+    npcSel.innerHTML = `<option value="">${t(lang, 'npcs')}…</option>` +
+      list.map((n) => `<option value="${n.id}">${n.name}</option>`).join('');
+  }
 
   function update(s) {
     lastState = s;
@@ -57,5 +65,5 @@ export function createHud(cb) {
   }
 
   root.classList.remove('hidden');
-  return { root, update };
+  return { root, update, setNpcs };
 }

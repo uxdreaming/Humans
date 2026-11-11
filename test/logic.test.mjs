@@ -57,7 +57,7 @@ import { Agent } from '../js/npc/agents.js';
   assert.equal(lotsOf(0, 0).length, 0); // plaza block has no lots
   const lots = lotsOf(5, 5);
   assert.ok(lots.length >= 2 && lots.length <= 4, '2x2 lots per block');
-  assert.ok(lots.every((l) => l.kind === 'house' || l.kind === 'garden'));
+  assert.ok(lots.every((l) => l.kind === 'house' || l.kind === 'garden' || l.kind === 'apartment'));
   assert.ok(BILLBOARDS.length >= 10);
   const sn1 = streetNameAt('x', streetCoord(0));
   const sn2 = streetNameAt('x', streetCoord(0));

@@ -79,6 +79,24 @@ export function makeNameSprite(text) {
   return sprite;
 }
 
+// small glowing marker above the head so NPCs are easy to spot from far
+export function makeMarkerSprite() {
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgba(255,212,121,0.35)';
+  ctx.beginPath(); ctx.arc(32, 32, 24, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffd479';
+  ctx.beginPath(); ctx.arc(32, 32, 12, 0, Math.PI * 2); ctx.fill();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  s.scale.set(0.7, 0.7, 1);
+  s.position.y = 2.75;
+  s.renderOrder = 9;
+  return s;
+}
+
 // procedural pose; phase in radians, from agent.walkPhase
 export function poseCharacter(parts, agent) {
   const p = parts;

@@ -8,7 +8,7 @@ import { Town, Traffic } from './world/town.js';
 import { Sky } from './world/sky.js';
 import { NPC_DEFS } from './npc/data.js';
 import { Agent } from './npc/agents.js';
-import { buildHumanoid, makeNameSprite, poseCharacter } from './npc/characters.js';
+import { buildHumanoid, makeNameSprite, makeMarkerSprite, poseCharacter } from './npc/characters.js';
 import { ObserverCamera } from './player/camera.js';
 import { pickAgent } from './player/picking.js';
 import { createHud } from './ui/hud.js';
@@ -41,9 +41,11 @@ const agents = NPC_DEFS.map((def) => {
   const { group, parts } = buildHumanoid(def.appearance);
   group.traverse((o) => { o.userData.npcId = def.id; });
   group.add(makeNameSprite(def.name));
+  const marker = makeMarkerSprite();
+  group.add(marker);
   group.position.set(agent.pos.x, 0, agent.pos.z);
   scene.add(group);
-  return { id: def.id, def, agent, group, parts };
+  return { id: def.id, def, agent, group, parts, marker };
 });
 
 // selection ring under the selected NPC
@@ -89,6 +91,14 @@ const hud = createHud({
   onSpeed: (s) => { state.speed = s; state.paused = false; },
   onQuality: applyQuality,
   onLangToggle: () => setLang(state.lang === 'es' ? 'en' : 'es'),
+  onSelectNpc: (id) => {
+    const a = agents.find((x) => x.id === id);
+    if (!a) return;
+    select(a);
+    observer.stopFollow();
+    observer.target.set(a.agent.pos.x, 1.4, a.agent.pos.z);
+    observer.dist = Math.min(observer.dist, 20);
+  },
   onFullscreen: () => {
     if (document.fullscreenElement) document.exitFullscreen();
     else document.documentElement.requestFullscreen();
@@ -158,6 +168,7 @@ window.addEventListener('resize', () => {
 
 applyQuality(state.quality);
 setLang(state.lang);
+hud.setNpcs(agents.map((a) => ({ id: a.id, name: a.def.name })), state.lang);
 setBoot('ready');
 
 // -------------------------------------------------------------------- loop --
@@ -182,6 +193,7 @@ function frame(now) {
     a.group.position.set(a.agent.pos.x, 0, a.agent.pos.z);
     a.group.rotation.y = a.agent.heading;
     poseCharacter(a.parts, a.agent);
+    a.marker.material.opacity = 0.55 + 0.45 * Math.sin(now / 300 + a.id * 1.7);
   }
 
   if (state.selected) {

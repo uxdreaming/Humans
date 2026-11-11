@@ -190,8 +190,8 @@ export class Town {
         group.add(sw);
         for (const lot of lotsOf(i, j)) {
           const lx = x + lot.ox, lz = z + lot.oz;
-          if (lot.kind === 'house') {
-            houses.push({ x: lx, z: lz, w: lot.w, d: lot.d, h: lot.h, wall: lot.wall, roof: lot.roof, rotY: lot.rotY, chimney: lot.chimney });
+          if (lot.kind === 'house' || lot.kind === 'apartment') {
+            houses.push({ x: lx, z: lz, w: lot.w, d: lot.d, h: lot.h, wall: lot.wall, roof: lot.roof, rotY: lot.rotY, chimney: lot.chimney, apartment: lot.kind === 'apartment' });
           } else {
             for (let t = 0; t < lot.trees; t++) {
               trees.push({
@@ -260,14 +260,14 @@ export class Town {
       if (lx >= x0 - 0.1 && lx <= x0 + span + 0.1) {
         for (let j = j0; j < j0 + CH; j++) {
           const cr = rngFor(CONFIG.seed, 'car', 'v', i, j);
-          if (chance(cr, 0.28)) cars.push({ x: lx - CONFIG.streetWidth / 2 + 1.8, z: j * PITCH + (cr() * 2 - 1) * 8, rotY: 0, color: pick(cr, carColors) });
+          if (chance(cr, 0.42)) cars.push({ x: lx - CONFIG.streetWidth / 2 + 1.8, z: j * PITCH + (cr() * 2 - 1) * 8, rotY: 0, color: pick(cr, carColors) });
         }
       }
       const lz = streetCoord(i * PITCH);
       if (lz >= z0 - 0.1 && lz <= z0 + span + 0.1) {
         for (let k = i0; k < i0 + CH; k++) {
           const cr = rngFor(CONFIG.seed, 'car', 'h', i, k);
-          if (chance(cr, 0.28)) cars.push({ x: k * PITCH + (cr() * 2 - 1) * 8, z: lz + CONFIG.streetWidth / 2 - 1.8, rotY: Math.PI / 2, color: pick(cr, carColors) });
+          if (chance(cr, 0.42)) cars.push({ x: k * PITCH + (cr() * 2 - 1) * 8, z: lz + CONFIG.streetWidth / 2 - 1.8, rotY: Math.PI / 2, color: pick(cr, carColors) });
         }
       }
     }
@@ -291,8 +291,14 @@ export class Town {
     for (const h of houses) {
       const cos = Math.cos(h.rotY), sin = Math.sin(h.rotY);
       const fz = h.d / 2 + 0.06;
-      for (const wx of [-h.w * 0.25, h.w * 0.25]) {
-        winPts.push({ pos: [h.x + wx * cos + fz * sin, h.h * 0.55, h.z - wx * sin + fz * cos], rotY: h.rotY, scale: [1, 1, 1] });
+      const cols = h.apartment ? 4 : 2;
+      const rows = h.apartment ? 2 : 1;
+      for (let rI = 0; rI < rows; rI++) {
+        for (let cI = 0; cI < cols; cI++) {
+          const wx = (cI - (cols - 1) / 2) * (h.w / (cols + 0.5));
+          const wy = h.h * (h.apartment ? 0.32 + 0.38 * rI : 0.55);
+          winPts.push({ pos: [h.x + wx * cos + fz * sin, wy, h.z - wx * sin + fz * cos], rotY: h.rotY, scale: [1, 1, 1] });
+        }
       }
     }
     const wins = this.instanced(shared.windowBoxGeo, this.windowMat, winPts);
@@ -683,12 +689,13 @@ function buildCarMesh(color) {
 export class Traffic {
   constructor(scene) {
     this.cars = [];
-    const colors = ['#b03a2e', '#2e4a6e', '#c9a24d'];
+    const colors = ['#b03a2e', '#2e4a6e', '#c9a24d', '#5a9e5a'];
     const ax = streetCoord(0); // central avenue (constant X line)
     const routes = [
       { axis: 'z', fixed: ax - 3, from: -HALF_Z * PITCH, to: HALF_Z * PITCH, dir: 1 },
       { axis: 'z', fixed: ax + 3, from: HALF_Z * PITCH, to: -HALF_Z * PITCH, dir: -1 },
       { axis: 'x', fixed: ax + 3, from: -HALF_X * PITCH, to: HALF_X * PITCH, dir: 1 },
+      { axis: 'x', fixed: ax - 3, from: HALF_X * PITCH, to: -HALF_X * PITCH, dir: -1 },
     ];
     routes.forEach((r, idx) => {
       const mesh = buildCarMesh(colors[idx % colors.length]);

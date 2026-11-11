@@ -8,6 +8,7 @@ export const STR = {
   es: {
     day: 'Día',
     population: 'habitantes',
+    npcs: 'Habitantes',
     pause: 'Pausa',
     resume: 'Reanudar',
     quality: 'Calidad',
@@ -69,6 +70,7 @@ export const STR = {
   en: {
     day: 'Day',
     population: 'inhabitants',
+    npcs: 'Inhabitants',
     pause: 'Pause',
     resume: 'Resume',
     quality: 'Quality',

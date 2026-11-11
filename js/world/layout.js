@@ -94,6 +94,7 @@ const HOUSE_COLORS = [
   '#9d8bc9', '#d97f6a', '#7fb3a0', '#cfc4ae', '#e3b7c6', '#a9b8c9',
 ];
 const ROOF_COLORS = ['#8a4b3a', '#6e4a3a', '#5a4632', '#7a3b3b', '#4a5a6e', '#6b3a4a'];
+const APARTMENT_COLORS = ['#9aa0a8', '#b8b0a0', '#8a97a5', '#a8a29a', '#7d8a99'];
 const LOT_OFFSETS = [[-5.5, -5.5], [5.5, -5.5], [-5.5, 5.5], [5.5, 5.5]];
 
 const lotsCache = new Map();
@@ -104,7 +105,14 @@ export function lotsOf(i, j) {
   if (inTown(i, j) && !landmarkAt(i, j)) {
     const rng = rngFor(CONFIG.seed, 'block', i, j);
     for (const [ox, oz] of LOT_OFFSETS) {
-      if (chance(rng, 0.74)) {
+      const roll = rng();
+      if (roll < 0.08) {
+        lots.push({
+          kind: 'apartment', ox, oz,
+          w: int(rng, 9, 10.5), d: int(rng, 8, 9.5), h: int(rng, 8, 10.5),
+          wall: pick(rng, APARTMENT_COLORS), roof: pick(rng, ROOF_COLORS), rotY: 0, chimney: false,
+        });
+      } else if (roll < 0.95) {
         lots.push({
           kind: 'house', ox, oz,
           w: int(rng, 6.5, 9), d: int(rng, 6, 8.5), h: int(rng, 3.6, 6.8),
