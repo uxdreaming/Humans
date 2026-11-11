@@ -222,6 +222,7 @@ export const NPC_DEFS = ROLES.map((r, idx) => {
     traits,
     goals: r.goals,
     schedule: scheduleFor(r.role),
+    startMoney: int(rng, 80, 200),
     relationships: [],
     appearance: {
       skin: pick(rng, ['#f2c9a0', '#e0ac7e', '#c98d5e', '#8d5a3b', '#f7d7b5']),

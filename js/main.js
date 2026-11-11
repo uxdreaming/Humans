@@ -1,18 +1,23 @@
-// HUMANS - entry point. Stage 1: observation mode over a living village.
+// HUMANS - entry point.
+// Stage 1: observation mode over a living village.
+// Stage 2: take control of an NPC (3rd/1st person) + playable supermarket shift.
 
 import * as THREE from 'three';
 import { CONFIG } from './core/config.js';
 import { t } from './core/i18n.js';
-import { TOWN_NAME } from './world/layout.js';
+import { TOWN_NAME, PLACES, STATIONS, stationWorld } from './world/layout.js';
 import { Town, Traffic } from './world/town.js';
 import { Sky } from './world/sky.js';
-import { NPC_DEFS } from './npc/data.js';
+import { NPC_DEFS, scheduleEntryAt } from './npc/data.js';
 import { Agent } from './npc/agents.js';
+import { WorkState, workUpdate, completeTask, isWorkNow } from './npc/work.js';
 import { buildHumanoid, makeNameSprite, makeMarkerSprite, poseCharacter } from './npc/characters.js';
 import { ObserverCamera } from './player/camera.js';
 import { pickAgent } from './player/picking.js';
 import { createHud } from './ui/hud.js';
 import { createPanel } from './ui/panel.js';
+import { createWorkUi } from './ui/work.js';
+import { createToasts } from './ui/toast.js';
 
 const bootMsg = document.getElementById('boot-msg');
 const setBoot = (m) => { if (bootMsg) bootMsg.textContent = m; };
@@ -48,6 +53,11 @@ const agents = NPC_DEFS.map((def) => {
   return { id: def.id, def, agent, group, parts, marker };
 });
 
+// work state per employed NPC
+const workStates = new Map(
+  NPC_DEFS.filter((d) => d.workPlace).map((d) => [d.id, new WorkState(d)]),
+);
+
 // selection ring under the selected NPC
 const ring = new THREE.Mesh(
   new THREE.RingGeometry(0.75, 0.95, 32),
@@ -66,7 +76,11 @@ const state = {
   speed: 1,
   gameMinutes: CONFIG.startHour * 60,
   selected: null,
+  controlling: null,
 };
+
+const toast = createToasts();
+const workUi = createWorkUi();
 
 function applyQuality(q) {
   state.quality = q;
@@ -82,8 +96,9 @@ function setLang(l) {
   localStorage.setItem('humans.lang', l);
   panel.setLang(l);
   panel.setHint(l);
+  hud.setNpcs(agents.map((a) => ({ id: a.id, name: a.def.name })), l);
+  if (state.selected) panel.show(state.selected, NPC_DEFS, l, workStates.get(state.selected.id));
   hud.update(hudState());
-  if (state.selected) panel.show({ def: state.selected.def, agent: state.selected.agent }, NPC_DEFS, l);
 }
 
 const hud = createHud({
@@ -105,12 +120,45 @@ const hud = createHud({
   },
 });
 
+function select(entry) {
+  state.selected = entry;
+  if (!entry) {
+    panel.hide();
+    ring.visible = false;
+    if (!state.controlling) observer.stopFollow();
+    panel.setFollowing(false);
+    return;
+  }
+  ring.visible = true;
+  panel.show(entry, NPC_DEFS, state.lang, workStates.get(entry.id));
+}
+
+function toggleControl(entry) {
+  if (!entry) return;
+  if (state.controlling === entry) {
+    entry.agent.controlled = false;
+    state.controlling = null;
+    observer.releaseControl();
+    panel.setControlling(false);
+    toast(`${t(state.lang, 'control.release')}: ${entry.def.name}`);
+    return;
+  }
+  if (state.controlling) state.controlling.agent.controlled = false;
+  state.controlling = entry;
+  entry.agent.controlled = true;
+  select(entry);
+  observer.control(entry);
+  panel.setControlling(true);
+  toast(`${t(state.lang, 'controlling')} ${entry.def.name}`);
+}
+
 const panel = createPanel({
   onFollowToggle: (entry) => {
-    if (state.selected !== entry) return;
+    if (state.selected !== entry || state.controlling) return;
     observer.toggleFollow(state.selected ? state.selected.agent : null);
     panel.setFollowing(observer.mode === 'follow');
   },
+  onTakeControl: (entry) => toggleControl(entry),
   onClose: () => select(null),
 });
 
@@ -129,35 +177,53 @@ function hudState() {
     speed: state.speed,
     quality: state.quality,
     fullscreen: !!document.fullscreenElement,
+    controllingName: state.controlling ? state.controlling.def.name : null,
   };
-}
-
-function select(entry) {
-  state.selected = entry;
-  if (!entry) {
-    panel.hide();
-    ring.visible = false;
-    observer.stopFollow();
-    panel.setFollowing(false);
-    return;
-  }
-  ring.visible = true;
-  panel.show(entry, NPC_DEFS, state.lang);
 }
 
 const observer = new ObserverCamera(camera, renderer.domElement, {
   onClick: (x, y) => {
+    if (state.controlling) return;
     const hit = pickAgent(camera, x, y, agents, renderer);
-    if (hit) select(hit);
-    else select(null);
+    select(hit);
   },
   onToggleFollow: () => {
-    if (state.selected) {
+    if (state.selected && !state.controlling) {
       observer.toggleFollow(state.selected.agent);
       panel.setFollowing(observer.mode === 'follow');
     }
   },
-  onEscape: () => select(null),
+  onToggleFP: () => observer.toggleFP(),
+  onEscape: () => {
+    if (state.controlling) toggleControl(state.controlling);
+    else select(null);
+  },
+});
+
+// E key: work task progress when on shift near a station
+let taskKey = 'restock';
+let taskProgress = 0;
+window.addEventListener('keydown', (e) => {
+  if (e.key.toLowerCase() !== 'e' || !state.controlling) return;
+  const c = state.controlling;
+  if (!isWorkNow(c.def, state.gameMinutes)) return;
+  const spot = PLACES[c.def.workPlace].spot;
+  if (Math.hypot(c.agent.pos.x - spot.x, c.agent.pos.z - spot.z) > 18) return;
+  const stations = (STATIONS[c.def.workPlace] || []).filter((s) => s.task === taskKey);
+  if (!stations.length) return;
+  const st = stations[Math.floor(Math.random() * stations.length)];
+  const w = stationWorld(c.def.workPlace, st);
+  if (Math.hypot(c.agent.pos.x - w.x, c.agent.pos.z - w.z) > 3.5) return;
+  taskProgress += 0.25;
+  if (taskProgress >= 1) {
+    taskProgress = 0;
+    const ws = workStates.get(c.id);
+    const ev = completeTask(ws);
+    toast(t(state.lang, 'work.taskDone'));
+    if (ev.praise) toast(t(state.lang, 'work.praise'));
+    const keys = ['restock', 'serve', 'organize'];
+    taskKey = keys[Math.floor(Math.random() * keys.length)];
+  }
 });
 
 window.addEventListener('resize', () => {
@@ -175,6 +241,18 @@ setBoot('ready');
 let last = performance.now();
 let booted = false;
 
+function handleWorkEvents(events, entry) {
+  const L = state.lang;
+  for (const ev of events) {
+    switch (ev.type) {
+      case 'shiftStart': toast(`${t(L, 'work.shiftStart')} ${t(L, `places.${ev.place}`)}`); break;
+      case 'onTime': toast(t(L, 'work.onTime')); break;
+      case 'late': toast(t(L, 'work.late')); break;
+      case 'paid': toast(`${t(L, 'work.paid')} ${ev.amount.toFixed(2)} ${t(L, 'work.money')}`); break;
+    }
+  }
+}
+
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.1, (now - last) / 1000);
@@ -189,11 +267,44 @@ function frame(now) {
   traffic.update(dtGameMin);
 
   for (const a of agents) {
-    a.agent.update(dtGameMin, state.gameMinutes);
+    a.agent.update(a.agent.controlled ? 0 : dtGameMin, state.gameMinutes);
     a.group.position.set(a.agent.pos.x, 0, a.agent.pos.z);
     a.group.rotation.y = a.agent.heading;
     poseCharacter(a.parts, a.agent);
     a.marker.material.opacity = 0.55 + 0.45 * Math.sin(now / 300 + a.id * 1.7);
+  }
+
+  // work system for the controlled NPC
+  if (state.controlling) {
+    const c = state.controlling;
+    const ws = workStates.get(c.id);
+    if (ws) {
+      const spot = PLACES[c.def.workPlace].spot;
+      const atWork = isWorkNow(c.def, state.gameMinutes) &&
+        Math.hypot(c.agent.pos.x - spot.x, c.agent.pos.z - spot.z) < 18;
+      const events = workUpdate(ws, state.gameMinutes, atWork, dtGameMin);
+      if (events.length) handleWorkEvents(events, c);
+      if (isWorkNow(c.def, state.gameMinutes)) {
+        const stations = (STATIONS[c.def.workPlace] || []).filter((s) => s.task === taskKey);
+        let near = false;
+        if (stations.length) {
+          const w = stationWorld(c.def.workPlace, stations[0]);
+          near = Math.hypot(c.agent.pos.x - w.x, c.agent.pos.z - w.z) < 3.5;
+        }
+        workUi.update({
+          lang: state.lang,
+          placeName: t(state.lang, `places.${c.def.workPlace}`),
+          taskKey, progress: taskProgress, near,
+          money: ws.money, approval: ws.approval,
+        });
+      } else {
+        workUi.update(null);
+      }
+    } else {
+      workUi.update(null);
+    }
+  } else {
+    workUi.update(null);
   }
 
   if (state.selected) {
@@ -214,4 +325,4 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // debug handle (no secrets, local only)
-window.__HUMANS = { state, agents, scene, town, sky, observer, CONFIG, TOWN_NAME };
+window.__HUMANS = { state, agents, scene, town, sky, observer, workStates, CONFIG, TOWN_NAME };

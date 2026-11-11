@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { CONFIG, PITCH } from '../core/config.js';
 import { rngFor, pick, chance } from '../core/rng.js';
 import {
-  inTown, blockToWorld, landmarkAt, lotsOf, streetCoord, BILLBOARDS, PLACES, HALF_X, HALF_Z,
+  inTown, blockToWorld, landmarkAt, lotsOf, streetCoord, BILLBOARDS, PLACES, HALF_X, HALF_Z, STATIONS, stationWorld,
 } from './layout.js';
 
 // Shared (never disposed) assets -------------------------------------------------
@@ -569,6 +569,35 @@ export class Town {
       line.rotation.x = -Math.PI / 2;
       line.position.set(-10 + k * 4, 0.045, -11);
       g.add(line);
+    }
+    // work stations: shelf racks, counter, storage shelves
+    const rackMat = new THREE.MeshStandardMaterial({ color: 0x8a6a42, roughness: 0.8 });
+    const goodsMats = [0xc0504d, 0x4d79c0, 0x5a9e5a, 0xc9a24d].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7 }));
+    let gi = 0;
+    for (const st of STATIONS.market || []) {
+      const w = stationWorld('market', st);
+      const local = new THREE.Group();
+      if (st.task === 'restock') {
+        const rack = new THREE.Mesh(new THREE.BoxGeometry(3.4, 2, 0.9), rackMat);
+        rack.position.y = 1; rack.castShadow = true;
+        local.add(rack);
+        for (let s = 0; s < 4; s++) {
+          const goods = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.6), goodsMats[(gi + s) % goodsMats.length]);
+          goods.position.set(-1.2 + s * 0.8, 1.5, 0.1);
+          local.add(goods);
+        }
+      } else if (st.task === 'serve') {
+        const counter = new THREE.Mesh(new THREE.BoxGeometry(3, 1.05, 1), new THREE.MeshStandardMaterial({ color: 0x2e3a4a, roughness: 0.5 }));
+        counter.position.y = 0.52; counter.castShadow = true;
+        local.add(counter);
+      } else {
+        const shelf = new THREE.Mesh(new THREE.BoxGeometry(3, 2.2, 1), rackMat);
+        shelf.position.y = 1.1; shelf.castShadow = true;
+        local.add(shelf);
+      }
+      local.position.set(w.x - x, 0, w.z - z);
+      g.add(local);
+      gi++;
     }
     g.position.set(x, 0, z);
     return g;

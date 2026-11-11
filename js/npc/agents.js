@@ -40,6 +40,7 @@ export class Agent {
     this.needs = { hunger: 80, energy: 85, social: 70 };
     this.mood = 'ok';
     this.locationName = '';
+    this.controlled = false; // true while the player drives this NPC
   }
 
   placePos(placeId) {
@@ -60,53 +61,55 @@ export class Agent {
   update(dtMin, gameMinutes) {
     const hour = (gameMinutes / 60) % 24;
     const entry = scheduleEntryAt(this.def, hour);
-    this.act = this.moving ? 'commute' : entry.act;
+    this.act = (!this.controlled && this.moving) ? 'commute' : entry.act;
 
-    // Head to the scheduled place when it changes.
-    if (!this.moving && entry.place !== this.placeId) {
-      this.placeId = entry.place;
-      const target = this.placePos(entry.place);
-      if (entry.act === 'stroll') {
-        this.strollTarget = randomSpotIn(entry.place, this.rng);
-      } else {
-        this.strollTarget = target;
-      }
-      this.waypoints = computePath(this.pos, this.strollTarget);
-      if (this.waypoints.length > 0) {
-        this.moving = true;
-        this.state = 'walk';
-      }
-    }
-
-    // Movement along waypoints (speed in metres per game-minute).
-    const speed = CONFIG.walkSpeed * 60; // m per game-minute
-    let step = speed * dtMin;
-    while (step > 0 && this.waypoints.length > 0) {
-      const wp = this.waypoints[0];
-      const dx = wp.x - this.pos.x, dz = wp.z - this.pos.z;
-      const dist = Math.hypot(dx, dz);
-      if (dist <= step) {
-        this.pos.x = wp.x; this.pos.z = wp.z;
-        this.waypoints.shift();
-        step -= dist;
-      } else {
-        this.pos.x += (dx / dist) * step;
-        this.pos.z += (dz / dist) * step;
-        step = 0;
-      }
-      if (dist > 0.001) this.heading = Math.atan2(dx, dz);
-    }
-    if (this.waypoints.length === 0 && this.moving) {
-      this.moving = false;
-      this.state = SIT_ACTS.has(this.act) ? 'sit' : 'idle';
-      if (this.act === 'stroll') {
-        // wander a little inside the plaza/park
-        this.strollTarget = randomSpotIn(this.placeId, this.rng);
+    if (!this.controlled) {
+      // autonomous routine: head to the scheduled place and walk there
+      if (!this.moving && entry.place !== this.placeId) {
+        this.placeId = entry.place;
+        const target = this.placePos(entry.place);
+        if (entry.act === 'stroll') {
+          this.strollTarget = randomSpotIn(entry.place, this.rng);
+        } else {
+          this.strollTarget = target;
+        }
         this.waypoints = computePath(this.pos, this.strollTarget);
-        if (this.waypoints.length > 1) { this.moving = true; this.state = 'walk'; }
+        if (this.waypoints.length > 0) {
+          this.moving = true;
+          this.state = 'walk';
+        }
       }
+
+      // Movement along waypoints (speed in metres per game-minute).
+      const speed = CONFIG.walkSpeed * 60; // m per game-minute
+      let step = speed * dtMin;
+      while (step > 0 && this.waypoints.length > 0) {
+        const wp = this.waypoints[0];
+        const dx = wp.x - this.pos.x, dz = wp.z - this.pos.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist <= step) {
+          this.pos.x = wp.x; this.pos.z = wp.z;
+          this.waypoints.shift();
+          step -= dist;
+        } else {
+          this.pos.x += (dx / dist) * step;
+          this.pos.z += (dz / dist) * step;
+          step = 0;
+        }
+        if (dist > 0.001) this.heading = Math.atan2(dx, dz);
+      }
+      if (this.waypoints.length === 0 && this.moving) {
+        this.moving = false;
+        this.state = SIT_ACTS.has(this.act) ? 'sit' : 'idle';
+        if (this.act === 'stroll') {
+          this.strollTarget = randomSpotIn(this.placeId, this.rng);
+          this.waypoints = computePath(this.pos, this.strollTarget);
+          if (this.waypoints.length > 1) { this.moving = true; this.state = 'walk'; }
+        }
+      }
+      if (!this.moving) this.state = SIT_ACTS.has(this.act) ? 'sit' : 'idle';
     }
-    if (!this.moving) this.state = SIT_ACTS.has(this.act) ? 'sit' : 'idle';
+    // when controlled, the player controller sets pos/heading/state directly
 
     // Needs decay per game hour.
     const hours = dtMin / 60;

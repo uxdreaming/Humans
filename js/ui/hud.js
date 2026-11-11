@@ -9,6 +9,7 @@ export function createHud(cb) {
     <span class="town" data-k="town"></span>
     <span class="pop" data-k="pop"></span>
     <select id="hud-npcs"></select>
+    <span class="pop" id="hud-ctrl"></span>
     <span class="spacer"></span>
     <span class="clock" data-k="clock"></span>
     <button data-k="pause" id="hud-pause"></button>
@@ -62,6 +63,7 @@ export function createHud(cb) {
     qualitySel.options[2].textContent = t(L, 'high');
     langBtn.textContent = t(L, 'langBtn');
     fsBtn.textContent = s.fullscreen ? t(L, 'exitFullscreen') : t(L, 'fullscreen');
+    root.querySelector('#hud-ctrl').textContent = s.controllingName ? `${t(L, 'controlling')} ${s.controllingName}` : '';
   }
 
   root.classList.remove('hidden');

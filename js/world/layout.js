@@ -130,6 +130,21 @@ export function lotsOf(i, j) {
   return lots;
 }
 
+// --------------------------------------------------------- work stations ---
+// Interactive spots at the supermarket (stage 2 work tasks).
+export const STATIONS = {
+  market: [
+    { id: 'shelvesA', task: 'restock', off: [-8, -7] },
+    { id: 'shelvesB', task: 'restock', off: [8, -7] },
+    { id: 'counter', task: 'serve', off: [0, 11] },
+    { id: 'storage', task: 'organize', off: [0, -14] },
+  ],
+};
+export function stationWorld(placeId, st) {
+  const p = PLACES[placeId];
+  return { x: p.x + st.off[0], z: p.z + st.off[1] };
+}
+
 // ------------------------------------------------------------ stroll spots ---
 export function randomSpotIn(placeId, rng) {
   const p = PLACES[placeId];
