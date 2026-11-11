@@ -46,6 +46,7 @@ export const STR = {
       cashier: 'Cajera del supermercado', retired: 'Jubilado', student: 'Estudiante',
       baker: 'Panadera', villager: 'Vecino/a',
       stocker: 'Reponedor/a del supermercado', barkeep: 'Camarero/a del bar',
+      nightowl: 'Búho nocturno',
     },
     traits: {
       friendly: 'amable', shy: 'tímido/a', grumpy: 'gruñón/a', curious: 'curioso/a',
@@ -108,6 +109,7 @@ export const STR = {
       cashier: 'Supermarket cashier', retired: 'Retired', student: 'Student',
       baker: 'Baker', villager: 'Villager',
       stocker: 'Supermarket stocker', barkeep: 'Barkeep',
+      nightowl: 'Night owl',
     },
     traits: {
       friendly: 'friendly', shy: 'shy', grumpy: 'grumpy', curious: 'curious',

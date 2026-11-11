@@ -115,12 +115,14 @@ export function lotsOf(i, j) {
       } else if (roll < 0.95) {
         lots.push({
           kind: 'house', ox, oz,
-          w: int(rng, 6.5, 9), d: int(rng, 6, 8.5), h: int(rng, 3.6, 6.8),
+          w: int(rng, 8, 10.4), d: int(rng, 7, 9.4), h: int(rng, 4, 7),
           wall: pick(rng, HOUSE_COLORS), roof: pick(rng, ROOF_COLORS),
+          roofType: pick(rng, ['pyramid', 'gable']),
           rotY: chance(rng, 0.5) ? 0 : Math.PI, chimney: chance(rng, 0.5),
+          fence: chance(rng, 0.35),
         });
       } else {
-        lots.push({ kind: 'garden', ox, oz, trees: int(rng, 1, 2), bushes: int(rng, 1, 2) });
+        lots.push({ kind: 'garden', ox, oz, trees: int(rng, 1, 2), bushes: int(rng, 1, 2), fence: true });
       }
     }
   }

@@ -35,6 +35,9 @@ const ROLES = [
   { role: 'villager',        gender: 'f', age: 36, occ: 'villager',        home: [-1, 2],  work: null,     goals: ['save_trip', 'help_town'] },
   { role: 'worker_bar',      gender: 'm', age: 30, occ: 'barkeep',         home: [2, 2],   work: 'bar',    goals: ['rest', 'make_friends'] },
   { role: 'villager2',       gender: 'f', age: 52, occ: 'villager',        home: [3, 2],   work: null,     goals: ['rest', 'save_trip'] },
+  { role: 'nightowl',        gender: 'm', age: 26, occ: 'nightowl',        home: [5, 0],   work: null,     goals: ['make_friends', 'rest'] },
+  { role: 'nightowl',        gender: 'f', age: 31, occ: 'nightowl',        home: [5, 1],   work: null,     goals: ['make_friends', 'study'] },
+  { role: 'worker_bar_night', gender: 'm', age: 24, occ: 'barkeep',        home: [-5, 0],  work: 'bar',    goals: ['save_trip', 'rest'] },
 ];
 
 // Relationships (symmetric): [a, b, type, strength]
@@ -60,6 +63,9 @@ const REL_EDGES = [
   [13, 19, 'friend', 50],
   [15, 18, 'neighbor', 45],
   [20, 21, 'friend', 55],
+  [24, 25, 'friend', 60],
+  [24, 14, 'friend', 55],
+  [26, 22, 'coworker', 65],
 ];
 
 function scheduleFor(role) {
@@ -179,6 +185,23 @@ function scheduleFor(role) {
         { from: 12, to: 20, act: 'work', place: 'bar' },
         { from: 20, to: 21, act: 'stroll', place: 'plaza' },
         { from: 21, to: 24, act: 'sleep', place: 'home' },
+      ];
+    case 'worker_bar_night':
+      return [
+        { from: 0, to: 12, act: 'sleep', place: 'home' },
+        { from: 12, to: 14, act: 'ready', place: 'home' },
+        { from: 14, to: 18, act: 'stroll', place: 'plaza' },
+        { from: 18, to: 24, act: 'work', place: 'bar' },
+      ];
+    case 'nightowl':
+      return [
+        { from: 0, to: 4, act: 'stroll', place: 'plaza' },
+        { from: 4, to: 6, act: 'ready', place: 'home' },
+        { from: 6, to: 14, act: 'sleep', place: 'home' },
+        { from: 14, to: 16, act: 'ready', place: 'home' },
+        { from: 16, to: 18, act: 'stroll', place: 'park' },
+        { from: 18, to: 20, act: 'social', place: 'bar' },
+        { from: 20, to: 24, act: 'stroll', place: 'plaza' },
       ];
     default:
       return [{ from: 0, to: 24, act: 'stroll', place: 'plaza' }];

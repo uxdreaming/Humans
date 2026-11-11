@@ -77,10 +77,13 @@ import { Agent } from '../js/npc/agents.js';
   const e = scheduleEntryAt(NPC_DEFS[0], 10);
   assert.equal(e.act, 'work');
   assert.equal(e.place, 'cafe');
-  // at 14:00 everyone is out of home (visible in the world)
+  // at 17:00 everyone is out of home (visible in the world)
   for (const def of NPC_DEFS) {
-    assert.notEqual(scheduleEntryAt(def, 14).place, 'home', `${def.name} should be out at 14:00`);
+    assert.notEqual(scheduleEntryAt(def, 17).place, 'home', `${def.name} should be out at 17:00`);
   }
+  // at 23:00 the nocturnal NPCs are out (not everyone sleeps at night)
+  const outAtNight = NPC_DEFS.filter((d) => scheduleEntryAt(d, 23).place !== 'home').length;
+  assert.ok(outAtNight >= 3, `at least 3 nocturnal NPCs out at 23:00 (got ${outAtNight})`);
   // all homes are valid town blocks without landmarks
   for (const def of NPC_DEFS) {
     assert.ok(inTown(def.homeBlock[0], def.homeBlock[1]), `home of ${def.name} in town`);

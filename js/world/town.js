@@ -34,12 +34,15 @@ const shared = {
   windowBoxGeo: new THREE.BoxGeometry(0.9, 1, 0.1),
   zebraGeo: new THREE.BoxGeometry(CONFIG.streetWidth - 1.5, 0.04, 0.45),
   bushGeo: new THREE.SphereGeometry(0.7, 7, 6),
+  fenceGeo: new THREE.BoxGeometry(1, 0.8, 0.08),
+  gableGeo: new THREE.BoxGeometry(1, 0.16, 1),
   carCabinMat: new THREE.MeshStandardMaterial({ color: 0x1c2733, roughness: 0.2, metalness: 0.3 }),
   wheelMat: new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.9 }),
   chimneyMat: new THREE.MeshStandardMaterial({ color: 0x8a5a4a, roughness: 0.9 }),
   doorMat: new THREE.MeshStandardMaterial({ color: 0x4a2f1d, roughness: 0.9 }),
   zebraMat: new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 1 }),
   bushMat: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }),
+  fenceMat: new THREE.MeshStandardMaterial({ color: 0x6e5638, roughness: 1 }),
 };
 shared.wheelGeo.rotateZ(Math.PI / 2); // wheel axis across the car
 
@@ -80,11 +83,23 @@ export class Town {
     this.lampMat = new THREE.MeshStandardMaterial({ color: 0x555a60, emissive: 0xffd9a0, emissiveIntensity: 0, roughness: 0.4 });
     this.windowMat = new THREE.MeshStandardMaterial({ color: 0x2a3550, emissive: 0xffe6a8, emissiveIntensity: 0, roughness: 0.3 });
     this.texCache = new Map();
+
+    // real point lights at key places so nights are readable
+    this.nightLights = [];
+    for (const id of ['plaza', 'cafe', 'market', 'bar']) {
+      const p = PLACES[id];
+      if (!p) continue;
+      const l = new THREE.PointLight(0xffd9a0, 0, 55, 1.6);
+      l.position.set(p.spot.x, 6, p.spot.z);
+      scene.add(l);
+      this.nightLights.push(l);
+    }
   }
 
   setNight(nightFactor) {
     this.lampMat.emissiveIntensity = nightFactor * 2.4;
     this.windowMat.emissiveIntensity = nightFactor * 1.6;
+    for (const l of this.nightLights) l.intensity = nightFactor * 60;
   }
 
   update(camX, camZ) {
@@ -123,7 +138,7 @@ export class Town {
     const p = new THREE.Vector3(), s = new THREE.Vector3();
     const col = new THREE.Color();
     list.forEach((it, idx) => {
-      e.set(0, it.rotY || 0, 0);
+      e.set(it.rotX || 0, it.rotY || 0, it.rotZ || 0);
       q.setFromEuler(e);
       p.set(it.pos[0], it.pos[1], it.pos[2]);
       s.set(it.scale[0], it.scale[1], it.scale[2]);
@@ -176,7 +191,7 @@ export class Town {
       }
     }
 
-    const houses = [], trees = [], lamps = [], bushes = [];
+    const houses = [], trees = [], lamps = [], bushes = [], fences = [];
     for (let i = i0; i < i0 + CH; i++) {
       for (let j = j0; j < j0 + CH; j++) {
         if (!inTown(i, j)) continue;
@@ -191,7 +206,7 @@ export class Town {
         for (const lot of lotsOf(i, j)) {
           const lx = x + lot.ox, lz = z + lot.oz;
           if (lot.kind === 'house' || lot.kind === 'apartment') {
-            houses.push({ x: lx, z: lz, w: lot.w, d: lot.d, h: lot.h, wall: lot.wall, roof: lot.roof, rotY: lot.rotY, chimney: lot.chimney, apartment: lot.kind === 'apartment' });
+            houses.push({ x: lx, z: lz, w: lot.w, d: lot.d, h: lot.h, wall: lot.wall, roof: lot.roof, roofType: lot.roofType || 'pyramid', rotY: lot.rotY, chimney: lot.chimney, apartment: lot.kind === 'apartment', fence: lot.fence });
           } else {
             for (let t = 0; t < lot.trees; t++) {
               trees.push({
@@ -206,6 +221,11 @@ export class Town {
                 s: 0.7 + rng() * 0.5,
                 color: new THREE.Color(0x35682c).offsetHSL((rng() - 0.5) * 0.04, 0, (rng() - 0.5) * 0.08).getHex(),
               });
+            }
+          }
+          if (lot.fence) {
+            for (const [fx, fz, ry] of [[0, -5.4, 0], [0, 5.4, 0], [-5.4, 0, Math.PI / 2], [5.4, 0, Math.PI / 2]]) {
+              fences.push({ pos: [lx + fx, 0.4, lz + fz], rotY: ry, scale: [10.8, 1, 1] });
             }
           }
         }
