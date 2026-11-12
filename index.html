@@ -8,7 +8,7 @@
   <title>HUMANS</title>
   <link rel="stylesheet" href="./css/style.css" />
   <script type="importmap">
-    { "imports": { "three": "./vendor/three/three.module.js?v=0.2.0" } }
+    { "imports": { "three": "./vendor/three/three.module.js?v=0.3.0" } }
   </script>
 </head>
 <body>
@@ -18,7 +18,17 @@
   <div id="hint" class="hidden"></div>
   <div id="toasts"></div>
   <div id="work" class="hidden"></div>
+  <div id="start" class="hidden">
+    <div class="start-card">
+      <h1>HUMANS <span id="start-ver"></span></h1>
+      <p class="start-town" id="start-town"></p>
+      <p class="start-sub" id="start-sub"></p>
+      <input id="start-search" type="text" autocomplete="off" spellcheck="false" />
+      <div id="start-list"></div>
+      <button id="start-observe"></button>
+    </div>
+  </div>
   <div id="boot">HUMANS<span id="boot-msg">loading…</span></div>
-  <script type="module" src="./js/main.js?v=0.2.0"></script>
+  <script type="module" src="./js/main.js?v=0.3.0"></script>
 </body>
 </html>

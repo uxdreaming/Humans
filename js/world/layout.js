@@ -119,11 +119,11 @@ export function lotsOf(i, j) {
           w: int(rng, 7, 9.5), d: int(rng, 6.5, 8.5), h: int(rng, 4, 7),
           wall: pick(rng, HOUSE_COLORS), roof: pick(rng, ROOF_COLORS),
           roofType: pick(rng, ['pyramid', 'gable']),
-          rotY: chance(rng, 0.5) ? 0 : Math.PI, chimney: chance(rng, 0.5),
+          rotY: chance(rng, 0.5) ? 0 : Math.PI, chimney: chance(rng, 0.7),
           fence: chance(rng, 0.6),
         });
       } else if (roll < 0.96) {
-        lots.push({ kind: 'garden', ox, oz, trees: int(rng, 1, 2), bushes: int(rng, 1, 2), fence: true });
+        lots.push({ kind: 'garden', ox, oz, trees: int(rng, 1, 3), bushes: int(rng, 1, 2), fence: true });
       } else {
         lots.push({ kind: 'empty', ox, oz });
       }

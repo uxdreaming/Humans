@@ -20,6 +20,8 @@ export class WorkState {
     this._shiftKey = null;
     this._lateChecked = false;
     this._workedMin = 0;
+    this._awayMin = 0;
+    this._abandoned = false;
   }
 }
 
@@ -37,11 +39,24 @@ export function workUpdate(ws, gameMinutes, atWorkPlace, dtMin) {
     ws._shiftKey = shiftKey;
     ws._lateChecked = false;
     ws._workedMin = 0;
+    ws._awayMin = 0;
+    ws._abandoned = false;
     events.push({ type: 'shiftStart', place: entry.place });
   }
 
   if (isWork && ws._shiftKey === shiftKey) {
-    if (atWorkPlace) ws._workedMin += dtMin;
+    if (atWorkPlace) {
+      ws._workedMin += dtMin;
+      ws._awayMin = 0;
+    } else {
+      // away from the workplace during the shift
+      ws._awayMin += dtMin;
+      if (ws._awayMin > 10 && !ws._abandoned) {
+        ws._abandoned = true;
+        ws.approval = clamp(ws.approval - 10, 0, 100);
+        events.push({ type: 'abandon' });
+      }
+    }
     const lateAfter = entry.from * 60 + 25; // minutes since midnight
     if (!ws._lateChecked && (gameMinutes % 1440) >= lateAfter) {
       ws._lateChecked = true;

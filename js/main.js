@@ -96,6 +96,7 @@ function setLang(l) {
   localStorage.setItem('humans.lang', l);
   panel.setLang(l);
   panel.setHint(l);
+  startScreen.setLang(l);
   hud.setNpcs(agents.map((a) => ({ id: a.id, name: a.def.name })), l);
   if (state.selected) panel.show(state.selected, NPC_DEFS, l, workStates.get(state.selected.id));
   hud.update(hudState());
@@ -228,7 +229,9 @@ window.addEventListener('keydown', (e) => {
   const st = stations[Math.floor(Math.random() * stations.length)];
   const w = stationWorld(c.def.workPlace, st);
   if (Math.hypot(c.agent.pos.x - w.x, c.agent.pos.z - w.z) > 3.5) return;
-  taskProgress += 0.25;
+  const ws0 = workStates.get(c.id);
+  const hungerFactor = ws0 && c.agent.needs.hunger < 30 ? 0.5 : 1; // hungry => slower work
+  taskProgress += 0.25 * hungerFactor;
   if (taskProgress >= 1) {
     taskProgress = 0;
     const ws = workStates.get(c.id);
@@ -254,6 +257,25 @@ setBoot('ready');
 // -------------------------------------------------------------------- loop --
 let last = performance.now();
 let booted = false;
+let customer = null; // visual customer at the counter while the "serve" task is active
+
+function ensureCustomer(c, now) {
+  const spot = PLACES[c.def.workPlace].spot;
+  const inWorkArea = Math.hypot(c.agent.pos.x - spot.x, c.agent.pos.z - spot.z) < 18;
+  const want = isWorkNow(c.def, state.gameMinutes) && inWorkArea && taskKey === 'serve';
+  if (want && !customer) {
+    const def = NPC_DEFS[(c.id + 7) % NPC_DEFS.length];
+    const { group, parts } = buildHumanoid(def.appearance);
+    const counter = stationWorld(c.def.workPlace, (STATIONS[c.def.workPlace] || []).find((s) => s.task === 'serve'));
+    group.position.set(counter.x, 0, counter.z + 2.5);
+    scene.add(group);
+    customer = { group, parts, agent: { state: 'idle', walkPhase: 0, def } };
+  } else if (!want && customer) {
+    scene.remove(customer.group);
+    customer = null;
+  }
+  if (customer) poseCharacter(customer.parts, customer.agent, now);
+}
 
 function handleWorkEvents(events, entry) {
   const L = state.lang;
@@ -262,6 +284,7 @@ function handleWorkEvents(events, entry) {
       case 'shiftStart': toast(`${t(L, 'work.shiftStart')} ${t(L, `places.${ev.place}`)}`); break;
       case 'onTime': toast(t(L, 'work.onTime')); break;
       case 'late': toast(t(L, 'work.late')); break;
+      case 'abandon': toast(t(L, 'work.abandon')); break;
       case 'paid': toast(`${t(L, 'work.paid')} ${ev.amount.toFixed(2)} ${t(L, 'work.money')}`); break;
     }
   }
@@ -292,6 +315,7 @@ function frame(now) {
   // work system for the controlled NPC
   if (state.controlling) {
     const c = state.controlling;
+    ensureCustomer(c, now);
     const ws = workStates.get(c.id);
     if (ws) {
       const spot = PLACES[c.def.workPlace].spot;
@@ -335,6 +359,7 @@ function frame(now) {
   if (!booted) {
     booted = true;
     document.getElementById('boot').style.display = 'none';
+    startScreen.show(agents, state.lang); // clock stays paused until a choice is made
   }
 }
 requestAnimationFrame(frame);

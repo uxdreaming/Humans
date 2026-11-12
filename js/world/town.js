@@ -33,6 +33,7 @@ const shared = {
   doorGeo: new THREE.BoxGeometry(1.2, 2, 0.12),
   windowBoxGeo: new THREE.BoxGeometry(0.9, 1, 0.1),
   zebraGeo: new THREE.BoxGeometry(CONFIG.streetWidth - 1.5, 0.04, 0.45),
+  dashGeo: new THREE.BoxGeometry(0.35, 0.03, 1.6),
   bushGeo: new THREE.SphereGeometry(0.7, 7, 6),
   fenceGeo: new THREE.BoxGeometry(1, 0.8, 0.08),
   gableGeo: new THREE.BoxGeometry(1, 0.16, 1),
@@ -41,6 +42,7 @@ const shared = {
   chimneyMat: new THREE.MeshStandardMaterial({ color: 0x8a5a4a, roughness: 0.9 }),
   doorMat: new THREE.MeshStandardMaterial({ color: 0x4a2f1d, roughness: 0.9 }),
   zebraMat: new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 1 }),
+  dashMat: new THREE.MeshStandardMaterial({ color: 0xcfcfcf, roughness: 1 }),
   bushMat: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }),
   fenceMat: new THREE.MeshStandardMaterial({ color: 0x6e5638, roughness: 1 }),
 };
@@ -253,7 +255,7 @@ export class Town {
         }
         // occasional street tree on the sidewalk corner
         const tr = rngFor(CONFIG.seed, 'streetree', i, j);
-        if (chance(tr, 0.12)) {
+        if (chance(tr, 0.2)) {
           trees.push({
             pos: [x + PITCH / 2 - 2.5, 0.85, z - PITCH / 2 + 2.5],
             scale: [1, 1, 1], s: 0.9 + tr() * 0.4,
@@ -277,6 +279,18 @@ export class Town {
     for (const b of BILLBOARDS) {
       if (b.x >= x0 && b.x <= x0 + span && b.z >= z0 && b.z <= z0 + span) group.add(this.buildBillboard(b));
     }
+
+    // centre dashes on the two central avenues
+    const dashes = [];
+    const aveX = streetCoord(0), aveZ = streetCoord(0);
+    if (aveX >= x0 - 0.1 && aveX <= x0 + span + 0.1) {
+      for (let s = 0; s < span; s += 6) dashes.push({ pos: [aveX, 0.05, z0 + s + 2], rotY: 0, scale: [1, 1, 1] });
+    }
+    if (aveZ >= z0 - 0.1 && aveZ <= z0 + span + 0.1) {
+      for (let s = 0; s < span; s += 6) dashes.push({ pos: [x0 + s + 2, 0.05, aveZ], rotY: Math.PI / 2, scale: [1, 1, 1] });
+    }
+    const dashMesh = this.instanced(shared.dashGeo, shared.dashMat, dashes);
+    if (dashMesh) { dashMesh.castShadow = false; dashMesh.receiveShadow = true; group.add(dashMesh); }
 
     // zebra crossings at the central intersections (|i|,|j| <= 2)
     const zebra = [];
@@ -497,6 +511,45 @@ export class Town {
         g.add(bulb);
       }
     }
+
+    // two market stalls in the plaza corners
+    for (const [sx, sz] of [[-10, -10], [10, 10]]) {
+      const stall = new THREE.Group();
+      const counter = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 1.2), new THREE.MeshStandardMaterial({ color: 0x8a6a42, roughness: 0.8 }));
+      counter.position.set(sx, 0.5, sz);
+      counter.castShadow = true;
+      stall.add(counter);
+      const awn = this.makeStripedAwning('#c0504d', '#f2e6d8', 3.6, 1.4);
+      awn.position.set(sx, 2.35, sz);
+      stall.add(awn);
+      for (const [px, pz] of [[-1.6, -0.6], [1.6, -0.6], [-1.6, 0.6], [1.6, 0.6]]) {
+        const post = new THREE.Mesh(shared.poleGeo, shared.poleMat);
+        post.position.set(sx + px, 1.15, sz + pz);
+        post.scale.set(0.8, 0.55, 0.8);
+        stall.add(post);
+      }
+      for (let gi = 0; gi < 3; gi++) {
+        const goods = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.5),
+          new THREE.MeshStandardMaterial({ color: [0xc0504d, 0x5a9e5a, 0xc9a24d][gi], roughness: 0.7 }));
+        goods.position.set(sx - 0.9 + gi * 0.9, 1.2, sz);
+        stall.add(goods);
+      }
+      g.add(stall);
+    }
+
+    // statue on a pedestal
+    const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 1.1, 10), this.stoneMat());
+    ped.position.set(10, 0.55, -10);
+    ped.castShadow = true;
+    const figMat = new THREE.MeshStandardMaterial({ color: 0x8f979e, roughness: 0.6 });
+    const fig = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.9, 4, 8), figMat);
+    fig.position.set(10, 1.9, -10);
+    fig.castShadow = true;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), figMat);
+    head.position.set(10, 2.75, -10);
+    head.castShadow = true;
+    g.add(ped, fig, head);
+
     g.position.set(x, 0, z);
     return g;
   }

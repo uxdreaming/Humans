@@ -24,6 +24,13 @@ export const STR = {
       take: 'Tomar control',
       release: 'Dejar el control',
     },
+    start: {
+      sub: 'Elige una vida para vivir en {town}',
+      searchPh: 'Buscar por nombre, oficio o rasgo…',
+      observe: 'Solo observar el pueblo',
+      playAs: 'Jugar como',
+      noResults: 'Nadie coincide con la búsqueda',
+    },
     work: {
       bar: 'Turno en',
       prompt: 'Pulsa E',
@@ -31,6 +38,7 @@ export const STR = {
       shiftStart: 'Empieza tu turno en',
       onTime: 'Llegaste puntual 👍',
       late: 'Llegaste tarde: el jefe lo ha notado ⚠️',
+      abandon: 'Te fuiste del trabajo: el jefe lo sabe ⚠️',
       paid: 'Has cobrado',
       taskDone: 'Tarea completada +2€',
       praise: '¡Buen trabajo! El jefe está contento ⭐',
@@ -105,6 +113,13 @@ export const STR = {
       take: 'Take control',
       release: 'Release control',
     },
+    start: {
+      sub: 'Choose a life to live in {town}',
+      searchPh: 'Search by name, job or trait…',
+      observe: 'Just watch the town',
+      playAs: 'Play as',
+      noResults: 'No one matches the search',
+    },
     work: {
       bar: 'Shift at',
       prompt: 'Press E',
@@ -112,6 +127,7 @@ export const STR = {
       shiftStart: 'Your shift starts at',
       onTime: 'You arrived on time 👍',
       late: 'You are late: the boss noticed ⚠️',
+      abandon: 'You left work early: the boss knows ⚠️',
       paid: 'You got paid',
       taskDone: 'Task done +2€',
       praise: 'Great work! The boss is happy ⭐',

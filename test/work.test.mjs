@@ -26,16 +26,18 @@ assert.ok(manager && manager.workPlace === 'market');
   assert.ok(ws.approval === 60, 'approval unchanged when on time');
 }
 
-// --- late arrival ---
+// --- late arrival (was at work briefly, then left before 08:25) ---
 {
   const ws = new WorkState(manager);
   const start = 8 * 60;
   let events = [];
-  for (let m = start; m < start + 30; m++) events = events.concat(workUpdate(ws, m, false, 1)); // not at work
+  for (let m = start; m < start + 20; m++) events = events.concat(workUpdate(ws, m, true, 1)); // at work 08:00-08:20
+  for (let m = start + 20; m < start + 26; m++) events = events.concat(workUpdate(ws, m, false, 1)); // away 08:20-08:26
   const late = events.find((e) => e.type === 'late');
   assert.ok(late, 'late event after 08:25 away from work');
   assert.equal(ws.lateCount, 1);
   assert.equal(ws.approval, 45, 'approval -15');
+  assert.ok(!events.some((e) => e.type === 'abandon'), 'no abandon yet (away < 10 min)');
 }
 
 // --- tasks: money + approval, praise every 5 ---
@@ -57,6 +59,16 @@ assert.ok(manager && manager.workPlace === 'market');
   assert.ok(isWorkNow(manager, 9 * 60), 'manager works at 09:00');
   assert.ok(!isWorkNow(manager, 12.5 * 60), 'manager at lunch at 12:30');
   assert.equal(scheduleEntryAt(manager, 12.5).act, 'lunch');
+}
+
+// --- abandoning the shift ---
+{
+  const ws = new WorkState(manager);
+  let events = [];
+  for (let m = 8 * 60; m < 8 * 60 + 30; m++) events = events.concat(workUpdate(ws, m, false, 1));
+  assert.ok(events.some((e) => e.type === 'abandon'), 'abandon event after 10 min away');
+  assert.ok(events.some((e) => e.type === 'late'), 'late event too');
+  assert.equal(ws.approval, 60 - 10 - 15, 'abandon -10 and late -15');
 }
 
 console.log('✔ all work tests passed');
