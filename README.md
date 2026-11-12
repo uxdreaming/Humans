@@ -193,7 +193,7 @@ and tested; stages 3-7 are plan, not code.
 |-------|-------------|--------|
 | 0 | Project documentation | ✅ done |
 | 1 | Visual village prototype: explorable 3D world, NPCs with routines and personalities, day/night cycle, observation mode (select/follow NPC) and character profile | ✅ done |
-| 2 | First playable life: third-person control (V = first person), game clock, playable supermarket job (restock/serve/organize with E), lateness and boss approval, money | ✅ done |
+| 2 | First playable life: start screen with NPC search (pick a life to play, or observe), third-person control (V = first person), game clock, playable supermarket job (restock/serve/organize with E, customer at the counter), lateness/abandonment and boss approval, money, hunger slows work | ✅ done |
 | 3 | Relationships, contacts, and memories; contextual text conversations; café scene; modular architecture for AI and voice; basic phone | ⏳ pending |
 | 4 | Daily life: shopping, inventory, basic economy, housing and decoration, parties, save system and offline simulation, fictional lottery | ⏳ pending |
 | 5 | Lives and persistent world: aging, death, new life, inheritable lessons, persistent consequences | ⏳ pending |
@@ -219,7 +219,7 @@ npm run serve          # = python3 serve.py 8000  (dev server with no-store cach
 # then open http://localhost:8000
 ```
 
-Tip: the HUD shows the build version (e.g. `HUMANS v0.2.0`) and the population
+Tip: the HUD shows the build version (e.g. `HUMANS v0.3.0`) and the population
 (e.g. `40/400`) — if you ever see old numbers, hard-reload with **Ctrl+Shift+R**;
 `serve.py` already sends `no-store` so a normal reload is enough.
 
@@ -241,10 +241,14 @@ Observation mode:
 - **Follow** button or **F**: camera follows the selected NPC. **Esc**: deselect.
 - **WASD**: move the camera focus · **drag**: orbit · **wheel**: zoom.
 
+Starting the game: a **start screen with a searchable NPC list** appears over the live
+town (search by name, job or trait). Click **Play as …** to start that life in control
+mode, or **Just watch the town** to observe. The clock stays paused until you choose.
+
 Playing a life (stage 2):
 - In the NPC panel, **Take control** to play that person: **WASD** move, **Shift** run,
   **drag** orbit camera, **V** first/third person, **Esc** or **Release control** to go
-  back to observation.
+  back to observation. **N** jumps to the nearest NPC.
 - If that NPC works at the supermarket and you are on shift there, a work bar appears:
   go to a station (shelves / counter / storage) and press **E** repeatedly to do the
   task (restock, serve, organize). Tasks pay money and raise boss approval; arriving
