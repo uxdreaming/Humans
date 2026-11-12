@@ -130,6 +130,16 @@ export function lotsOf(i, j) {
   return lots;
 }
 
+// ---------------------------------------------------------------- benches ---
+// World positions of sit spots (match the 3D builders in town.js).
+export const BENCHES = {
+  plaza: [0, 1, 2, 3].map((k) => {
+    const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
+    return { x: Math.cos(a) * 6.5, z: Math.sin(a) * 6.5 };
+  }),
+  park: [{ x: PLACES.park.x + 5, z: PLACES.park.z - 6 }],
+};
+
 // --------------------------------------------------------- work stations ---
 // Interactive spots at the supermarket (stage 2 work tasks).
 export const STATIONS = {

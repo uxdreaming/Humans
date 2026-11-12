@@ -2,7 +2,7 @@
 // Pure logic (no three.js): main.js syncs the visual mesh from agent state.
 
 import { CONFIG } from '../core/config.js';
-import { PLACES, blockToWorld, streetCoord, randomSpotIn, nearestStreetName } from '../world/layout.js';
+import { PLACES, BENCHES, blockToWorld, streetCoord, randomSpotIn, nearestStreetName } from '../world/layout.js';
 import { scheduleEntryAt } from './data.js';
 import { rngFor } from '../core/rng.js';
 
@@ -41,6 +41,7 @@ export class Agent {
     this.mood = 'ok';
     this.locationName = '';
     this.controlled = false; // true while the player drives this NPC
+    this.sitUntil = null;    // game-minutes until which the NPC sits on a bench
   }
 
   placePos(placeId) {
@@ -63,7 +64,10 @@ export class Agent {
     const entry = scheduleEntryAt(this.def, hour);
     this.act = (!this.controlled && this.moving) ? 'commute' : entry.act;
 
-    if (!this.controlled) {
+    const sitting = this.sitUntil !== null && gameMinutes < this.sitUntil;
+    if (this.sitUntil !== null && !sitting) this.sitUntil = null;
+
+    if (!this.controlled && !sitting) {
       // autonomous routine: head to the scheduled place and walk there
       if (!this.moving && entry.place !== this.placeId) {
         this.placeId = entry.place;
@@ -101,14 +105,25 @@ export class Agent {
       if (this.waypoints.length === 0 && this.moving) {
         this.moving = false;
         this.state = SIT_ACTS.has(this.act) ? 'sit' : 'idle';
-        if (this.act === 'stroll') {
-          this.strollTarget = randomSpotIn(this.placeId, this.rng);
-          this.waypoints = computePath(this.pos, this.strollTarget);
-          if (this.waypoints.length > 1) { this.moving = true; this.state = 'walk'; }
+        if (this.act === 'stroll' || this.act === 'social') {
+          const benches = BENCHES[this.placeId];
+          if (benches && this.rng() < 0.45) {
+            // sit on a bench for a few game-minutes
+            const bench = benches[Math.floor(this.rng() * benches.length)];
+            this.sitUntil = gameMinutes + 3 + this.rng() * 6;
+            this.waypoints = computePath(this.pos, bench);
+            if (this.waypoints.length > 1) { this.moving = true; this.state = 'walk'; }
+            else this.state = 'sit';
+          } else if (this.act === 'stroll') {
+            this.strollTarget = randomSpotIn(this.placeId, this.rng);
+            this.waypoints = computePath(this.pos, this.strollTarget);
+            if (this.waypoints.length > 1) { this.moving = true; this.state = 'walk'; }
+          }
         }
       }
       if (!this.moving) this.state = SIT_ACTS.has(this.act) ? 'sit' : 'idle';
     }
+    if (sitting) { this.moving = false; this.state = 'sit'; }
     // when controlled, the player controller sets pos/heading/state directly
 
     // Needs decay per game hour.

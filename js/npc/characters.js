@@ -97,27 +97,33 @@ export function makeMarkerSprite() {
   return s;
 }
 
-// procedural pose; phase in radians, from agent.walkPhase
-export function poseCharacter(parts, agent) {
+// procedural pose; phase in radians, from agent.walkPhase; now = ms timestamp
+export function poseCharacter(parts, agent, now = 0) {
   const p = parts;
+  const id = agent.def ? agent.def.id : 0;
   if (agent.state === 'sit') {
     p.legL.rotation.x = -1.35; p.legR.rotation.x = -1.35;
     p.legL.position.y = 0.45; p.legR.position.y = 0.45;
     p.body.position.y = 0.78;
     p.armL.rotation.x = -0.5; p.armR.rotation.x = -0.5;
     p.head.position.y = 1.38; p.hair.position.y = 1.41;
+    p.head.rotation.y = Math.sin(now / 1600 + id * 2.1) * 0.3;
   } else {
     p.legL.position.y = 0.78; p.legR.position.y = 0.78;
-    p.body.position.y = 1.08;
     p.head.position.y = 1.68; p.hair.position.y = 1.71;
     if (agent.state === 'walk') {
       const s = Math.sin(agent.walkPhase) * 0.65;
       p.legL.rotation.x = s; p.legR.rotation.x = -s;
       p.armL.rotation.x = -s * 0.8; p.armR.rotation.x = s * 0.8;
+      p.body.position.y = 1.08 + Math.abs(Math.sin(agent.walkPhase)) * 0.04;
+      p.head.rotation.y = 0;
     } else {
-      const b = Math.sin(agent.walkPhase * 0.3) * 0.05;
+      // idle: breathing + looking around
+      const breath = Math.sin(now / 900 + id * 1.3);
       p.legL.rotation.x = 0; p.legR.rotation.x = 0;
-      p.armL.rotation.x = b; p.armR.rotation.x = -b;
+      p.armL.rotation.x = breath * 0.05; p.armR.rotation.x = -breath * 0.05;
+      p.body.position.y = 1.08 + breath * 0.015;
+      p.head.rotation.y = Math.sin(now / 1700 + id * 2.7) * 0.4;
     }
   }
 }

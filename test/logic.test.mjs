@@ -118,6 +118,21 @@ import { Agent } from '../js/npc/agents.js';
   for (let i = 0; i < 120; i++) { night.update(1, m2); m2 += 1; } // 22:00 -> 00:00 (sleep)
   assert.ok(night.needs.energy > e0, 'sleeping restores energy');
   assert.equal(night.act, 'sleep');
+
+  // bench sitting: a sitting agent does not move
+  const sitter = new Agent(NPC_DEFS[3]);
+  sitter.sitUntil = 12 * 60 + 30;
+  const p0 = { ...sitter.pos };
+  for (let i = 0; i < 20; i++) sitter.update(1, 12 * 60 + i);
+  assert.equal(sitter.state, 'sit');
+  assert.deepEqual(sitter.pos, p0, 'sitting agent stays put');
+
+  // controlled agent: schedule does not move them
+  const ctrl = new Agent(NPC_DEFS[0]);
+  ctrl.controlled = true;
+  const c0 = { ...ctrl.pos };
+  for (let i = 0; i < 60; i++) ctrl.update(1, 9 * 60 + i); // 09:00-10:00, would normally walk to café
+  assert.deepEqual(ctrl.pos, c0, 'controlled agent is not moved by the routine');
 }
 
 console.log('✔ all logic tests passed');

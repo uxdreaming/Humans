@@ -264,13 +264,14 @@ function frame(now) {
   const skyInfo = sky.update(state.gameMinutes, observer.target);
   town.setNight(skyInfo.night);
   town.update(observer.target.x, observer.target.z);
+  town.animate(dt);
   traffic.update(dtGameMin);
 
   for (const a of agents) {
     a.agent.update(a.agent.controlled ? 0 : dtGameMin, state.gameMinutes);
     a.group.position.set(a.agent.pos.x, 0, a.agent.pos.z);
     a.group.rotation.y = a.agent.heading;
-    poseCharacter(a.parts, a.agent);
+    poseCharacter(a.parts, a.agent, now);
     a.marker.material.opacity = 0.55 + 0.45 * Math.sin(now / 300 + a.id * 1.7);
   }
 

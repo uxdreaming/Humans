@@ -46,6 +46,11 @@ const shared = {
 };
 shared.wheelGeo.rotateZ(Math.PI / 2); // wheel axis across the car
 
+// shared emissive materials for night lights (cars, plaza string lights)
+const headlightMat = new THREE.MeshStandardMaterial({ color: 0xfff6c0, emissive: 0xfff2b0, emissiveIntensity: 0 });
+const taillightMat = new THREE.MeshStandardMaterial({ color: 0x881111, emissive: 0xff2211, emissiveIntensity: 0 });
+const stringBulbMat = new THREE.MeshStandardMaterial({ color: 0xffe9b0, emissive: 0xffc966, emissiveIntensity: 0 });
+
 export function makeTextTexture(text, { w = 512, h = 128, bg = '#1c2547', fg = '#ffd479', font = 40 } = {}) {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
@@ -99,7 +104,15 @@ export class Town {
   setNight(nightFactor) {
     this.lampMat.emissiveIntensity = nightFactor * 2.4;
     this.windowMat.emissiveIntensity = nightFactor * 1.6;
+    headlightMat.emissiveIntensity = nightFactor * 3;
+    taillightMat.emissiveIntensity = nightFactor * 1.8;
+    stringBulbMat.emissiveIntensity = nightFactor * 2.6;
     for (const l of this.nightLights) l.intensity = nightFactor * 60;
+  }
+
+  // per-frame world animation (fountain water, etc.)
+  animate(dt) {
+    if (this.fountainWater) this.fountainWater.rotation.y += dt * 0.6;
   }
 
   update(camX, camZ) {
@@ -434,6 +447,7 @@ export class Town {
       new THREE.MeshStandardMaterial({ color: 0x3f8fd2, roughness: 0.2, metalness: 0.1, emissive: 0x0a2a4a, emissiveIntensity: 0.4 }),
     );
     water.rotation.x = -Math.PI / 2; water.position.y = 0.72;
+    this.fountainWater = water;
     const column = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 2.2, 10), this.stoneMat());
     column.position.y = 1.8; column.castShadow = true;
     const top = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), this.stoneMat());
@@ -445,11 +459,34 @@ export class Town {
     for (let k = 0; k < 4; k++) {
       const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
       const b = new THREE.Mesh(benchGeo, benchMat);
-      b.position.set(x + Math.cos(a) * 6.5 - x, 0.45, z + Math.sin(a) * 6.5 - z);
       b.position.set(Math.cos(a) * 6.5, 0.45, Math.sin(a) * 6.5);
       b.rotation.y = -a;
       b.castShadow = true;
       g.add(b);
+    }
+
+    // string lights between 4 corner poles (glow at night)
+    const corners = [[-13, -13], [13, -13], [13, 13], [-13, 13]];
+    for (const [px, pz] of corners) {
+      const pole = new THREE.Mesh(shared.poleGeo, shared.poleMat);
+      pole.position.set(px, 2.5, pz);
+      pole.scale.set(1.2, 1.15, 1.2);
+      pole.castShadow = true;
+      g.add(pole);
+    }
+    const bulbGeo = new THREE.SphereGeometry(0.13, 6, 5);
+    for (let e = 0; e < 4; e++) {
+      const [ax, az] = corners[e];
+      const [bx, bz] = corners[(e + 1) % 4];
+      for (let k = 1; k <= 9; k++) {
+        const f = k / 10;
+        const lx = ax + (bx - ax) * f;
+        const lz = az + (bz - az) * f;
+        const sag = Math.sin(f * Math.PI) * 1.1;
+        const bulb = new THREE.Mesh(bulbGeo, stringBulbMat);
+        bulb.position.set(lx, 5 - sag, lz);
+        g.add(bulb);
+      }
     }
     g.position.set(x, 0, z);
     return g;
@@ -731,6 +768,15 @@ function buildCarMesh(color) {
     const w = new THREE.Mesh(shared.wheelGeo, shared.wheelMat);
     w.position.set(wx, 0.32, wz);
     g.add(w);
+  }
+  // headlights / taillights (glow at night)
+  const lightGeo = new THREE.BoxGeometry(0.38, 0.14, 0.06);
+  for (const wx of [-0.55, 0.55]) {
+    const h = new THREE.Mesh(lightGeo, headlightMat);
+    h.position.set(wx, 0.55, 2.12);
+    const tl = new THREE.Mesh(lightGeo, taillightMat);
+    tl.position.set(wx, 0.55, -2.12);
+    g.add(h, tl);
   }
   return g;
 }
