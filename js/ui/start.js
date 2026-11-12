@@ -16,8 +16,9 @@ export function createStartScreen(cb) {
     document.getElementById('start-ver').textContent = `v${VERSION}`;
     document.getElementById('start-town').textContent = TOWN_NAME;
     document.getElementById('start-sub').textContent = t(lang, 'start.sub').replace('{town}', TOWN_NAME);
-    search.placeholder = t(lang, 'start.searchPh');
+    search.placeholder = `🔍 ${t(lang, 'start.searchPh')}`;
     document.getElementById('start-observe').textContent = t(lang, 'start.observe');
+    document.getElementById('start-hint').textContent = t(lang, 'start.controls');
   }
 
   function render() {

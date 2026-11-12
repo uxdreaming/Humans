@@ -37,7 +37,7 @@ export function createPanel(cb) {
 
     root.innerHTML = `
       <button class="close" id="pn-close">✕</button>
-      <h2>${def.name}</h2>
+      <h2><span class="avatar">${def.name.charAt(0)}</span>${def.name}</h2>
       <div class="sub">${t(L, `occupations.${def.occupation}`)}</div>
       ${row(p.age, def.age)}
       ${workRows}
@@ -57,7 +57,7 @@ export function createPanel(cb) {
       <div class="actions">
         <button id="pn-follow">${following ? p.unfollow : p.follow}</button>
         <button id="pn-take" class="secondary">${controlling ? t(L, 'control.release') : t(L, 'control.take')}</button>
-        ${controlling ? `<button id="pn-talk" class="secondary">${p.talk}</button>` : ''}
+        <button id="pn-talk" class="secondary">${p.talk}</button>
       </div>
     `;
     root.querySelector('#pn-close').addEventListener('click', () => cb.onClose());

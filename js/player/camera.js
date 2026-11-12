@@ -59,6 +59,8 @@ export class ObserverCamera {
     this.roomPos = null;
     this.roomDoor = null; // world door pos: keeps town streaming anchored outside
     this.vel = { x: 0, z: 0 };
+    this.airY = 0;   // jump height (visual only; pos stays 2D)
+    this.vy = 0;
     this.firstPerson = false;
     this.keys = new Set();
     this._down = null;
@@ -67,6 +69,7 @@ export class ObserverCamera {
     window.addEventListener('keydown', (e) => {
       if (e.target && e.target.tagName === 'INPUT') return; // typing in chat: no game keys
       const k = e.key.toLowerCase();
+      if (k === ' ') e.preventDefault(); // jump, don't scroll
       this.keys.add(k);
       if (k === 'f') cb.onToggleFollow();
       if (k === 'v') cb.onToggleFP();
@@ -106,6 +109,8 @@ export class ObserverCamera {
     this.pitch = 0.35;
     this.firstPerson = false;
     this.vel = { x: 0, z: 0 };
+    this.airY = 0;
+    this.vy = 0;
   }
 
   releaseControl() {
@@ -142,6 +147,8 @@ export class ObserverCamera {
     this.pitch = 0.3;
     this.dist = 6;
     this.vel = { x: 0, z: 0 };
+    this.airY = 0;
+    this.vy = 0;
     this.firstPerson = false;
   }
 
@@ -237,6 +244,11 @@ export class ObserverCamera {
       this.roomPos.x += this.vel.x * dt;
       this.roomPos.z += this.vel.z * dt;
       clampInterior(this.roomPos, this.roomSpec, 0.4);
+      // jump (GTA-style space)
+      if (this.keys.has(' ') && this.airY <= 0.001) this.vy = 5.0;
+      this.vy -= 18 * dt;
+      this.airY = Math.max(0, this.airY + this.vy * dt);
+      if (this.airY === 0) this.vy = 0;
       if (a) {
         if (sp > 0.4) {
           a.heading = Math.atan2(this.vel.x, this.vel.z);
@@ -254,11 +266,11 @@ export class ObserverCamera {
       const cp = Math.cos(this.pitch);
       const desired = new THREE.Vector3(
         fx + back * cp * Math.sin(this.yaw),
-        1.5 + back * Math.sin(this.pitch),
+        1.5 + this.airY + back * Math.sin(this.pitch),
         fz + back * cp * Math.cos(this.yaw),
       );
       this.camera.position.lerp(desired, 1 - Math.exp(-dt * 12));
-      this.camera.lookAt(fx, this.firstPerson ? 1.68 : 1.5, fz);
+      this.camera.lookAt(fx, (this.firstPerson ? 1.68 : 1.5) + this.airY, fz);
       // keep world streaming anchored at the outside door
       if (this.roomDoor) this.target.set(this.roomDoor.x, 1.5, this.roomDoor.z);
       return;
@@ -290,6 +302,11 @@ export class ObserverCamera {
       a.pos.x += this.vel.x * dt;
       a.pos.z += this.vel.z * dt;
       collide(a.pos, 0.45);
+      // jump (GTA-style space)
+      if (this.keys.has(' ') && this.airY <= 0.001) this.vy = 5.6;
+      this.vy -= 18 * dt;
+      this.airY = Math.max(0, this.airY + this.vy * dt);
+      if (this.airY === 0) this.vy = 0;
       if (sp > 0.4) {
         a.heading = Math.atan2(this.vel.x, this.vel.z);
         a.moving = true;
@@ -299,7 +316,7 @@ export class ObserverCamera {
         a.moving = false;
         a.state = 'idle';
       }
-      this.target.set(a.pos.x, 1.5, a.pos.z);
+      this.target.set(a.pos.x, 1.5 + this.airY, a.pos.z);
       const dist = this.firstPerson ? 0.05 : this.dist;
       const cp = Math.cos(this.pitch);
       const desired = new THREE.Vector3(
@@ -308,7 +325,7 @@ export class ObserverCamera {
         this.target.z + dist * cp * Math.cos(this.yaw),
       );
       this.camera.position.lerp(desired, 1 - Math.exp(-dt * 12));
-      this.camera.lookAt(this.target.x, this.firstPerson ? 1.68 : this.target.y, this.target.z);
+      this.camera.lookAt(this.target.x, this.firstPerson ? 1.68 + this.airY : this.target.y, this.target.z);
       // FOV widens when running
       const wantFov = running && sp > 5 ? this.baseFov + 10 : this.baseFov;
       if (Math.abs(this.camera.fov - wantFov) > 0.1) {

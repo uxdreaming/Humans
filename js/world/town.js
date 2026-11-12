@@ -10,6 +10,8 @@ import {
   inTown, blockToWorld, landmarkAt, lotsOf, streetCoord, streetNameAt, BILLBOARDS, PLACES, HALF_X, HALF_Z, STATIONS, stationWorld,
 } from './layout.js';
 import { makeTextTexture, makeNoiseTexture } from './textures.js';
+import { HIP_ROOF, GABLE_ROOF, roofPlan, roofHeight } from './roofGeo.js';
+import { shopName } from '../core/names.js';
 import { buildCarMesh, headlightMat, taillightMat } from './cars.js';
 
 // procedural ground surfaces (shared; repeat is set per use)
@@ -20,10 +22,17 @@ const TEX = {
   plaster: makeNoiseTexture({ base: '#ffffff', vary: 10 }),
 };
 
+function bufferGeo({ positions, indices }) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  g.setIndex(indices);
+  g.computeVertexNormals();
+  return g;
+}
+
 // Shared (never disposed) assets -------------------------------------------------
 const shared = {
   wallGeo: new THREE.BoxGeometry(1, 1, 1),
-  roofGeo: new THREE.ConeGeometry(1, 1, 4),
   trunkGeo: new THREE.CylinderGeometry(0.12, 0.17, 1.7, 6),
   foliageGeo: new THREE.IcosahedronGeometry(1, 0),
   poleGeo: new THREE.CylinderGeometry(0.07, 0.1, 4.4, 6),
@@ -48,7 +57,11 @@ const shared = {
   dashGeo: new THREE.BoxGeometry(0.35, 0.03, 1.6),
   bushGeo: new THREE.SphereGeometry(0.7, 7, 6),
   fenceGeo: new THREE.BoxGeometry(1, 0.8, 0.08),
-  gableGeo: new THREE.BoxGeometry(1, 0.16, 1),
+  hipGeo: bufferGeo(HIP_ROOF),
+  gableGeo: bufferGeo(GABLE_ROOF),
+  flowerGeo: new THREE.IcosahedronGeometry(0.09, 0),
+  planterGeo: new THREE.CylinderGeometry(0.45, 0.35, 0.5, 8),
+  hydrantGeo: new THREE.CylinderGeometry(0.14, 0.16, 0.55, 8),
   carCabinMat: new THREE.MeshStandardMaterial({ color: 0x1c2733, roughness: 0.2, metalness: 0.3 }),
   wheelMat: new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.9 }),
   chimneyMat: new THREE.MeshStandardMaterial({ color: 0x8a5a4a, roughness: 0.9 }),
@@ -197,7 +210,7 @@ export class Town {
     const grassTex = TEX.grass.clone();
     grassTex.needsUpdate = true;
     grassTex.repeat.set(span / 9, span / 9);
-    const grassTint = new THREE.Color(0xffffff).offsetHSL(0, 0, (rng() - 0.5) * 0.08);
+    const grassTint = new THREE.Color(0xffffff).offsetHSL((rng() - 0.5) * 0.05, (rng() - 0.5) * 0.06, (rng() - 0.5) * 0.14);
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(span, span),
       new THREE.MeshStandardMaterial({ color: grassTint, roughness: 1, map: grassTex }),
@@ -227,7 +240,7 @@ export class Town {
       }
     }
 
-    const houses = [], trees = [], lamps = [], bushes = [], fences = [];
+    const houses = [], trees = [], lamps = [], bushes = [], fences = [], flowers = [], planters = [], hydrants = [];
     for (let i = i0; i < i0 + CH; i++) {
       for (let j = j0; j < j0 + CH; j++) {
         if (!inTown(i, j)) continue;
@@ -266,6 +279,14 @@ export class Town {
                 color: new THREE.Color(0x35682c).offsetHSL((rng() - 0.5) * 0.04, 0, (rng() - 0.5) * 0.08).getHex(),
               });
             }
+            // flower dots on garden lots
+            const nf = 4 + Math.floor(rng() * 6);
+            for (let f = 0; f < nf; f++) {
+              flowers.push({
+                pos: [lx + (rng() * 2 - 1) * 4, 0.1, lz + (rng() * 2 - 1) * 4],
+                color: new THREE.Color().setHSL(0.05 + rng() * 0.85, 0.75, 0.6).getHex(),
+              });
+            }
           }
           if (lot.fence) {
             for (const [fx, fz, ry] of [[0, -5.4, 0], [0, 5.4, 0], [-5.4, 0, Math.PI / 2], [5.4, 0, Math.PI / 2]]) {
@@ -281,6 +302,14 @@ export class Town {
             scale: [1, 1, 1], s: 0.9 + tr() * 0.4,
             color: new THREE.Color(0x3f7a35).offsetHSL((tr() - 0.5) * 0.05, 0, (tr() - 0.5) * 0.08).getHex(),
           });
+        }
+        // sidewalk props: planters and hydrants
+        const pr = rngFor(CONFIG.seed, 'props', i, j);
+        if (chance(pr, 0.35)) {
+          planters.push({ pos: [x + PITCH / 2 - 1.6, 0.25, z + (pr() * 2 - 1) * 9], color: 0x3f7a35 });
+        }
+        if (chance(pr, 0.18)) {
+          hydrants.push({ pos: [x - PITCH / 2 + 1.6, 0.28, z + (pr() * 2 - 1) * 9], color: 0xc0392b });
         }
       }
     }
@@ -344,9 +373,9 @@ export class Town {
         if (x < x0 || x > x0 + span || z < z0 || z > z0 + span) continue;
         for (let k = 0; k < 5; k++) {
           zebra.push({ pos: [x, 0.045, z - CONFIG.streetWidth / 2 - 0.7 - k * 0.85], rotY: 0, scale: [1, 1, 1] });
-          zebra.push({ pos: [x, 0.045, z + CONFIG.streetWidth / 2 + 0.7 + k * 0.85], rotY: 0, scale: [1, 1, 1] });
+          zebra.push({ pos: [x, 0.045, z + CONFIG.streetWidth / 2 - 0.9 - k * 0.85], rotY: 0, scale: [1, 1, 1] });
           zebra.push({ pos: [x - CONFIG.streetWidth / 2 - 0.7 - k * 0.85, 0.045, z], rotY: Math.PI / 2, scale: [1, 1, 1] });
-          zebra.push({ pos: [x + CONFIG.streetWidth / 2 + 0.7 + k * 0.85, 0.045, z], rotY: Math.PI / 2, scale: [1, 1, 1] });
+          zebra.push({ pos: [x + CONFIG.streetWidth / 2 - 0.9 - k * 0.85, 0.045, z], rotY: Math.PI / 2, scale: [1, 1, 1] });
         }
       }
     }
@@ -374,9 +403,19 @@ export class Town {
     const walls = this.instanced(shared.wallGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, map: TEX.plaster }),
       houses.map((h) => ({ pos: [h.x, h.h / 2, h.z], rotY: h.rotY, scale: [h.w, h.h, h.d], color: h.wall })));
     if (walls) group.add(walls);
-    const roofs = this.instanced(shared.roofGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 }),
-      houses.map((h) => ({ pos: [h.x, h.h + 0.01, h.z], rotY: h.rotY + Math.PI / 4, scale: [h.w * 0.78, h.h * 0.55 + 1.2, h.d * 0.78], color: h.roof })));
-    if (roofs) group.add(roofs);
+    // roofs: hip pyramids / gable prisms with overhang, flat slab on apartment blocks
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, side: THREE.DoubleSide });
+    const byKind = { hip: [], gable: [], flat: [] };
+    for (const h of houses) {
+      const plan = roofPlan(h);
+      byKind[plan.kind].push({ pos: plan.pos, rotY: plan.rotY, scale: plan.scale, color: h.roof });
+    }
+    const hipRoofs = this.instanced(shared.hipGeo, roofMat, byKind.hip);
+    if (hipRoofs) group.add(hipRoofs);
+    const gableRoofs = this.instanced(shared.gableGeo, roofMat, byKind.gable);
+    if (gableRoofs) group.add(gableRoofs);
+    const flatRoofs = this.instanced(shared.wallGeo, roofMat, byKind.flat);
+    if (flatRoofs) group.add(flatRoofs);
 
     // house doors (varied colours) + windows (windows glow at night via town.windowMat)
     const DOOR_COLORS = ['#4a2f1d', '#2e4a6e', '#5a3a1d', '#3a3a3a', '#6e3a2e'];
@@ -424,10 +463,48 @@ export class Town {
     const wins = this.instanced(shared.windowBoxGeo, this.windowMat, winPts);
     if (wins) { wins.castShadow = false; group.add(wins); }
 
+    // glowing shop signs on facades near the centre (unlit material = neon look, bloom catches it)
+    const NEON = [0xff4fa3, 0x4fd8ff, 0x9dff4f, 0xffd24f, 0xc77dff];
+    for (let hi = 0; hi < houses.length; hi++) {
+      const h = houses[hi];
+      if (h.apartment || Math.abs(h.x) > 5 * PITCH || Math.abs(h.z) > 5 * PITCH) continue;
+      if ((hi * 7 + 3) % 4 !== 0) continue;
+      const srng = rngFor(CONFIG.seed, 'neon', hi, Math.round(h.x), Math.round(h.z));
+      const name = shopName(srng);
+      let tex = this.texCache.get('neon:' + name);
+      if (!tex) {
+        tex = makeTextTexture(name, { bg: '#07070f', fg: '#ffffff', font: 44, w: 256, h: 80 });
+        this.texCache.set('neon:' + name, tex);
+      }
+      const cos = Math.cos(h.rotY), sin = Math.sin(h.rotY);
+      const fz = h.d / 2 + 0.09;
+      const sign = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.3, 0.72),
+        new THREE.MeshBasicMaterial({ map: tex, color: NEON[Math.floor(srng() * NEON.length)] }),
+      );
+      sign.position.set(h.x + sin * fz, Math.max(2.6, h.h - 0.7), h.z + cos * fz);
+      sign.rotation.y = h.rotY;
+      group.add(sign);
+    }
+
     // garden bushes
     const bushMeshes = this.instanced(shared.bushGeo, shared.bushMat,
       bushes.map((b) => ({ pos: [b.pos[0], b.pos[1], b.pos[2]], scale: [b.s, b.s * 0.6, b.s], color: b.color })));
     if (bushMeshes) group.add(bushMeshes);
+
+    // flowers on gardens, planters + hydrants on sidewalks
+    const flowerMesh = this.instanced(shared.flowerGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 }),
+      flowers.map((f) => ({ pos: [f.pos[0], f.pos[1], f.pos[2]], scale: [1, 1, 1], color: f.color })));
+    if (flowerMesh) { flowerMesh.castShadow = false; group.add(flowerMesh); }
+    const planterMesh = this.instanced(shared.planterGeo, new THREE.MeshStandardMaterial({ color: 0x9a5a3a, roughness: 0.9 }),
+      planters.map((p) => ({ pos: [p.pos[0], p.pos[1], p.pos[2]], scale: [1, 1, 1] })));
+    if (planterMesh) group.add(planterMesh);
+    const planterBush = this.instanced(shared.bushGeo, shared.bushMat,
+      planters.map((p) => ({ pos: [p.pos[0], 0.72, p.pos[2]], scale: [0.55, 0.42, 0.55], color: p.color })));
+    if (planterBush) { planterBush.castShadow = false; group.add(planterBush); }
+    const hydrantMesh = this.instanced(shared.hydrantGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.3 }),
+      hydrants.map((h) => ({ pos: [h.pos[0], h.pos[1], h.pos[2]], scale: [1, 1, 1], color: h.color })));
+    if (hydrantMesh) group.add(hydrantMesh);
 
     // crosswalks
     const zebraMesh = this.instanced(shared.zebraGeo, shared.zebraMat, zebra);
@@ -447,8 +524,8 @@ export class Town {
 
     // chimneys on some roofs
     const chimneys = this.instanced(shared.chimneyGeo, shared.chimneyMat,
-      houses.filter((h) => h.chimney).map((h) => ({
-        pos: [h.x + h.w * 0.25 * Math.cos(h.rotY), h.h + 0.7, h.z - h.w * 0.25 * Math.sin(h.rotY)],
+      houses.filter((h) => h.chimney && !h.apartment).map((h) => ({
+        pos: [h.x + h.w * 0.25 * Math.cos(h.rotY), h.h + roofHeight(h.w, h.d) * 0.55, h.z - h.w * 0.25 * Math.sin(h.rotY)],
         rotY: h.rotY, scale: [1, 1, 1],
       })));
     if (chimneys) group.add(chimneys);

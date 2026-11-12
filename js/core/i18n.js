@@ -23,6 +23,7 @@ export const STR = {
     control: {
       take: 'Tomar control',
       release: 'Dejar el control',
+      hint: 'WASD moverse · Shift correr · Espacio saltar · E: hablar/entrar/coche/trabajo · V primera persona · N más cercano · F seguir · Esc salir',
     },
     start: {
       sub: 'Elige una vida para vivir en {town}',
@@ -30,6 +31,7 @@ export const STR = {
       observe: 'Solo observar el pueblo',
       playAs: 'Jugar como',
       noResults: 'Nadie coincide con la búsqueda',
+      controls: 'WASD moverse · Shift correr · arrastrar: órbita · rueda: zoom · E hablar/entrar/coche/trabajo · V primera persona · N NPC más cercano · F seguir · Esc cancelar',
     },
     work: {
       bar: 'Turno en',
@@ -109,6 +111,7 @@ export const STR = {
     },
     chat: {
       with: 'Conversación con',
+      you: 'Tú',
       listening: 'escuchando',
       mic: 'Micrófono (hablar por voz)',
       micUnavailable: 'Este navegador no soporta el micrófono: escribe con el teclado',
@@ -151,6 +154,7 @@ export const STR = {
     control: {
       take: 'Take control',
       release: 'Release control',
+      hint: 'WASD move · Shift run · Space jump · E: talk/enter/car/work · V first person · N nearest · F follow · Esc exit',
     },
     start: {
       sub: 'Choose a life to live in {town}',
@@ -158,6 +162,7 @@ export const STR = {
       observe: 'Just watch the town',
       playAs: 'Play as',
       noResults: 'No one matches the search',
+      controls: 'WASD move · Shift run · drag: orbit · wheel: zoom · E talk/enter/car/work · V first person · N nearest NPC · F follow · Esc cancel',
     },
     work: {
       bar: 'Shift at',
@@ -237,6 +242,7 @@ export const STR = {
     },
     chat: {
       with: 'Chat with',
+      you: 'You',
       listening: 'listening',
       mic: 'Microphone (speak out loud)',
       micUnavailable: 'This browser has no microphone support: type instead',

@@ -1,7 +1,7 @@
 // Global tuning constants for HUMANS.
 // Everything that should be tweakable without touching game logic lives here.
 
-export const VERSION = '0.6.0';
+export const VERSION = '0.7.0';
 
 export const CONFIG = {
   seed: 20261111,          // world seed: same seed => same town, same names

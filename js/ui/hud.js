@@ -53,7 +53,7 @@ export function createHud(cb) {
     root.querySelector('[data-k="town"]').textContent = s.townName;
     root.querySelector('[data-k="pop"]').textContent = `${s.pop}/${s.maxPop} ${t(L, 'population')}`;
     root.querySelector('[data-k="clock"]').textContent = `${t(L, 'day')} ${s.day} · ${s.timeStr}`;
-    pauseBtn.textContent = s.paused ? t(L, 'resume') : t(L, 'pause');
+    pauseBtn.textContent = (s.paused ? '▶ ' : '⏸ ') + (s.paused ? t(L, 'resume') : t(L, 'pause'));
     for (const b of root.querySelectorAll('.spd')) {
       b.classList.toggle('active', !s.paused && Number(b.textContent) === s.speed);
     }
@@ -63,7 +63,7 @@ export function createHud(cb) {
     qualitySel.options[1].textContent = t(L, 'medium');
     qualitySel.options[2].textContent = t(L, 'high');
     langBtn.textContent = t(L, 'langBtn');
-    fsBtn.textContent = s.fullscreen ? t(L, 'exitFullscreen') : t(L, 'fullscreen');
+    fsBtn.textContent = '⛶ ' + (s.fullscreen ? t(L, 'exitFullscreen') : t(L, 'fullscreen'));
     const money = s.money != null ? ` · ${Math.floor(s.money)}€` : '';
     root.querySelector('#hud-ctrl').textContent = s.controllingName ? `${t(L, 'controlling')} ${s.controllingName}${money}` : '';
   }

@@ -80,6 +80,13 @@ export function billboardText(rng, town) {
   return template(product, town);
 }
 
+const SHOP_TYPES = ['RAMEN', '24 HORAS', 'CAFÉ', 'BAR', 'TIENDA', 'FARMACIA', 'KARAOKE', 'MERCADO', 'PELUQUERÍA', 'SUSHI', 'VIDEOJUEGOS', 'LIBRERÍA'];
+
+// Short glowing shop sign for building facades near the centre.
+export function shopName(rng) {
+  return pick(rng, SHOP_TYPES);
+}
+
 export function cityName(rng) {
   if (chance(rng, 0.35)) {
     const n = pick(rng, FIRST_F.concat(FIRST_M));

@@ -7,7 +7,7 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
 PORT=8000
 LOG=/tmp/humans-launch.log
-URL="http://localhost:${PORT}/?v=0.6.0"
+URL="http://localhost:${PORT}/?v=0.7.0"
 
 {
   echo "== $(date '+%H:%M:%S') lanzando desde $DIR =="
@@ -17,7 +17,7 @@ URL="http://localhost:${PORT}/?v=0.6.0"
 import sys, urllib.request
 try:
     html = urllib.request.urlopen(f"http://localhost:{sys.argv[1]}/", timeout=2).read().decode()
-    print("v=0.6.0" in html)
+    print("v=0.7.0" in html)
 except Exception:
     print("False")
 PY

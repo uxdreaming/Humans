@@ -212,7 +212,7 @@ client; an external AI backend can later be plugged into `js/ai/`.
 Actual repository status: Stage 0 (docs), **Stage 1 (playable 3D village prototype)**,
 **Stage 2 (first playable life: control an NPC + playable job, money, cars, unlocks)** and
 the first part of **Stage 3 (contextual conversations by text and voice + enterable
-buildings)** are implemented and tested (current build **v0.6.0**); the rest of stages
+buildings)** are implemented and tested (current build **v0.7.0**); the rest of stages
 3-7 is plan, not code.
 
 | Stage | Description | Status |
@@ -253,7 +253,7 @@ launcher (edit the `Exec=` path if you cloned the repo somewhere other than
 "Allow launching" if asked). Opening `index.html` directly via `file://` does
 **not** work (browsers block ES modules there) — always use `play.sh` / a server.
 
-Tip: the HUD shows the build version (e.g. `HUMANS v0.6.0`) and the population
+Tip: the HUD shows the build version (e.g. `HUMANS v0.7.0`) and the population
 (e.g. `46/400`) — if you ever see old numbers, hard-reload with **Ctrl+Shift+R**;
 `serve.py` already sends `no-store` so a normal reload is enough.
 
@@ -280,15 +280,16 @@ town (search by name, job or trait). Click **Play as …** to start that life in
 mode, or **Just watch the town** to observe. The clock stays paused until you choose.
 
 Playing a life (stage 2):
-- In the NPC panel, **Take control** to play that person: **WASD** move, **Shift** run,
-  **drag** orbit camera, **V** first/third person, **Esc** or **Release control** to go
-  back to observation. **N** jumps to the nearest NPC.
+- In the NPC panel, **Take control** to play that person (GTA-style): **WASD** move,
+  **Shift** run (camera follows you), **Space** jump, **drag** orbit camera, **V**
+  first/third person, **Esc** or **Release control** to go back to observation.
+  **N** jumps to the nearest NPC. A controls toast appears when you take control.
 - If that NPC works and you are on shift there, a work bar appears: go to a station
   (shelves / counter / storage / cleaning zone) and press **E** repeatedly to do the
   task (restock, serve, organize, clean). Tasks pay money and raise boss approval;
   arriving 25+ min late lowers it. Salary is paid per worked hour when the shift ends.
 
-Talking and entering places (v0.6.0):
+Talking and entering places (v0.6.0+, works while controlling AND while observing):
 - Stand next to an NPC and press **E** (or the Talk button in its panel) to open the
   chat: type freely or use the **mic button** to speak (it only records while on; a red
   badge shows "listening"). Replies appear in the chat and are spoken aloud when the
@@ -306,7 +307,18 @@ Top bar (always): **pause / 1x / 2x / 4x** time controls (1 game hour = 10 real
 minutes), **quality** (low/medium/high: shadows + pixel ratio), **ES/EN** language
 toggle, **fullscreen**.
 
-### Current build (v0.6.0) — implemented vs. known limitations
+### Current build (v0.7.0) — implemented vs. known limitations
+
+v0.7.0 fixes and upgrades: correct roofs on every house (hip pyramids and gable prisms
+aligned to each footprint with overhang, flat slabs on apartment blocks — unit-tested
+in `test/roof.test.mjs` and verified with a rendered check), zebra crossings that stay
+inside the streets instead of touching the plaza, glowing neon shop signs on central
+facades, planters / hydrants / flower beds, wider color and size variety per block,
+smoother capsule-limb characters (shoes, neck, hair, deterministic hats), **Space to
+jump** (GTA-style), conversations available **also while observing** (E near the camera
+focus, or the Talk button in the panel), and a full premium UI redesign (glass HUD with
+chips, animated start screen with controls summary, inspector panel with avatar, chat
+panel with mic button).
 
 Implemented: seeded procedural **mini-city of 60x80 blocks** (always the same city) with 11
 landmarks — main plaza (fountain, string lights, stalls), market square, cafe, church,

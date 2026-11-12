@@ -38,6 +38,7 @@ const setBoot = (m) => { if (bootMsg) bootMsg.textContent = m; };
 const qs = new URLSearchParams(location.search);
 if (qs.get('q')) localStorage.setItem('humans.quality', qs.get('q'));
 if (qs.get('chunks')) CONFIG.renderChunkRadius = Math.max(0, Math.min(3, parseInt(qs.get('chunks'), 10) || 1));
+const NOFRAME = !!qs.get('noframe'); // ?noframe=1 renders exactly one frame (debug / screenshots)
 
 // ---------------------------------------------------------------- renderer --
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -212,6 +213,7 @@ function toggleControl(entry) {
   observer.control(entry);
   panel.setControlling(true);
   toast(`${t(state.lang, 'controlling')} ${entry.def.name}`);
+  toast(t(state.lang, 'control.hint'));
 }
 
 const panel = createPanel({
@@ -221,15 +223,16 @@ const panel = createPanel({
     panel.setFollowing(observer.mode === 'follow');
   },
   onTakeControl: (entry) => toggleControl(entry),
-  onTalk: (entry) => { if (state.controlling && entry !== state.controlling) openChat(entry); },
+  onTalk: (entry) => { if (entry && entry !== state.controlling) openChat(entry); },
   onClose: () => select(null),
 });
 
 // ------------------------------------------------------------- chat/voice --
 function relFor(aId, bId) {
-  const key = `${Math.min(aId, bId)}-${Math.max(aId, bId)}`;
+  const ka = String(aId), kb = String(bId);
+  const key = ka < kb ? `${ka}-${kb}` : `${kb}-${ka}`;
   if (!chatRels.has(key)) {
-    const seeded = NPC_DEFS[aId].relationships.find((r) => r.id === bId);
+    const seeded = typeof aId === 'number' ? NPC_DEFS[aId].relationships.find((r) => r.id === bId) : null;
     chatRels.set(key, {
       strength: seeded ? seeded.strength : 30,
       memory: { greeted: false, rng: rngFor(CONFIG.seed, 'chat', key) },
@@ -238,14 +241,17 @@ function relFor(aId, bId) {
   return chatRels.get(key);
 }
 
+// chat works while controlling a character AND while observing (as the narrator voice)
 function openChat(entry) {
-  if (!state.controlling || entry === state.controlling) return;
+  if (!entry || entry === state.controlling) return;
   state.chatWith = entry;
   const c = state.controlling;
-  entry.agent.chatWith = c.agent;
-  c.agent.chatWith = entry.agent;
+  if (c) {
+    entry.agent.chatWith = c.agent;
+    c.agent.chatWith = entry.agent;
+    c.agent.chatUntil = state.gameMinutes + 60;
+  }
   entry.agent.chatUntil = state.gameMinutes + 60;
-  c.agent.chatUntil = state.gameMinutes + 60;
   chatUi.open(entry.def.name, state.lang);
   sendChat('hola'); // opening line starts the conversation
 }
@@ -262,18 +268,22 @@ function closeChat() {
 function sendChat(text) {
   const o = state.chatWith;
   const c = state.controlling;
-  if (!o || !c || !text.trim()) return;
+  if (!o || !text.trim()) return;
   chatUi.addMsg('you', text);
-  const rel = relFor(c.id, o.id);
+  const rel = relFor(c ? c.id : 'P', o.id);
+  const playerName = c ? c.def.name : t(state.lang, 'chat.you');
   const { text: reply, relDelta } = respond({
-    def: o.def, agent: o.agent, rel, playerName: c.def.name,
+    def: o.def, agent: o.agent, rel, playerName,
     text, lang: state.lang, memory: rel.memory,
   });
   rel.strength = Math.max(0, Math.min(100, rel.strength + relDelta));
   o.agent.needs.social = Math.min(100, o.agent.needs.social + 8);
-  c.agent.needs.social = Math.min(100, c.agent.needs.social + 8);
   o.agent.chatUntil = state.gameMinutes + 20;
-  o.agent.chatWith = c.agent;
+  o.agent.chatWith = c ? c.agent : null;
+  if (c) {
+    c.agent.needs.social = Math.min(100, c.agent.needs.social + 8);
+    c.agent.chatWith = o.agent;
+  }
   chatUi.addMsg('npc', reply);
   if (voice.ttsAvailable) voice.speak(reply, state.lang);
   chatUi.focus();
@@ -500,13 +510,17 @@ function tryRefuel() {
 window.addEventListener('keydown', (e) => {
   if (e.target && e.target.tagName === 'INPUT') return; // typing in the chat input
   const k = e.key.toLowerCase();
+  // talking works in both modes: controlling (near the NPC) or observing (near the camera focus)
+  if (k === 'e' && !state.driving && !state.interior) {
+    const pos = state.controlling ? state.controlling.agent.pos : observer.target;
+    const talker = nearestTalkable(pos, state.controlling ? 4 : 8);
+    if (talker) { openChat(talker); return; }
+  }
   if (!state.controlling) return;
   if (k === 'e') {
     if (state.driving) { exitDrive(); return; }
     if (state.interior) { exitInterior(); return; }
     const pos = state.controlling.agent.pos;
-    const talker = nearestTalkable(pos, 4);
-    if (talker) { openChat(talker); return; }
     const ent = nearestEnterable(pos);
     if (ent) { enterInterior(ent.kind, ent.door, ent.label); return; }
     const car = nearestCar(pos, 3.6);
@@ -606,7 +620,7 @@ function handleWorkEvents(events, entry) {
 }
 
 function frame(now) {
-  requestAnimationFrame(frame);
+  if (!NOFRAME) requestAnimationFrame(frame);
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
 
@@ -644,7 +658,8 @@ function frame(now) {
       const o = a.agent.chatWith;
       a.agent.heading = Math.atan2(o.pos.x - a.agent.pos.x, o.pos.z - a.agent.pos.z);
     }
-    a.group.position.set(a.agent.pos.x, 0, a.agent.pos.z);
+    const airY = (a === state.controlling && (observer.mode === 'control' || observer.mode === 'interior')) ? observer.airY : 0;
+    a.group.position.set(a.agent.pos.x, airY, a.agent.pos.z);
     a.group.rotation.y = a.agent.heading;
     poseCharacter(a.parts, a.agent, now);
     a.marker.material.opacity = 0.55 + 0.45 * Math.sin(now / 300 + a.id * 1.7);
@@ -654,7 +669,7 @@ function frame(now) {
   // while inside a building, render the controlled NPC at the room position
   if (state.interior && state.controlling && observer.roomPos) {
     const c = state.controlling;
-    c.group.position.set(state.interior.slot.x + observer.roomPos.x, 0, state.interior.slot.z + observer.roomPos.z);
+    c.group.position.set(state.interior.slot.x + observer.roomPos.x, observer.airY, state.interior.slot.z + observer.roomPos.z);
     c.group.rotation.y = c.agent.heading;
   }
 
@@ -701,6 +716,10 @@ function frame(now) {
           }
         }
       }
+    } else if (state.selected) {
+      // observing: offer to talk to the selected NPC when the camera is close to them
+      const d = Math.hypot(state.selected.agent.pos.x - observer.target.x, state.selected.agent.pos.z - observer.target.z);
+      setPrompt(d < 8 ? t(state.lang, 'chat.talkPrompt').replace('{name}', state.selected.def.name) : null);
     } else setPrompt(null);
   }
 
@@ -763,7 +782,7 @@ function frame(now) {
   if (!booted) {
     booted = true;
     document.getElementById('boot').style.display = 'none';
-    startScreen.show(agents, state.lang); // clock stays paused until a choice is made
+    if (!qs.get('selftest')) startScreen.show(agents, state.lang); // clock stays paused until a choice is made
   }
 }
 
@@ -799,8 +818,7 @@ if (qs.get('selftest')) {
     }
   }
 }
-if (!qs.get('noframe')) requestAnimationFrame(frame); // ?noframe=1 skips the render loop (debug)
-else document.getElementById('boot').style.display = 'none';
+requestAnimationFrame(frame); // ?noframe=1 stops after the first frame (debug / screenshots)
 
 // debug handle (no secrets, local only)
-window.__HUMANS = { state, agents, scene, town, sky, observer, workStates, CONFIG, TOWN_NAME, interiors, voice, chatUi };
+window.__HUMANS = { state, agents, scene, town, sky, observer, workStates, CONFIG, TOWN_NAME, interiors, voice, chatUi, renderer, camera, startScreen, openChat, enterInterior, exitInterior, sendChat };

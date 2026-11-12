@@ -112,9 +112,10 @@ export const BILLBOARDS = [];
 const HOUSE_COLORS = [
   '#e8d5b5', '#d9a066', '#b5c7d9', '#c98f8f', '#a8c686', '#e6c07a',
   '#9d8bc9', '#d97f6a', '#7fb3a0', '#cfc4ae', '#e3b7c6', '#a9b8c9',
+  '#e0b7b0', '#b7d9c9', '#d9c98f', '#a8b8e0', '#c9a8b8', '#8fc9c0',
 ];
-const ROOF_COLORS = ['#8a4b3a', '#6e4a3a', '#5a4632', '#7a3b3b', '#4a5a6e', '#6b3a4a'];
-const APARTMENT_COLORS = ['#9aa0a8', '#b8b0a0', '#8a97a5', '#a8a29a', '#7d8a99'];
+const ROOF_COLORS = ['#8a4b3a', '#6e4a3a', '#5a4632', '#7a3b3b', '#4a5a6e', '#6b3a4a', '#3a5a4a', '#7a5a2e', '#54334f', '#2e4a5a'];
+const APARTMENT_COLORS = ['#9aa0a8', '#b8b0a0', '#8a97a5', '#a8a29a', '#7d8a99', '#6e7d8a', '#a89a8a', '#8a8fa8'];
 const LOT_OFFSETS = [[-5.5, -5.5], [5.5, -5.5], [-5.5, 5.5], [5.5, 5.5]];
 
 const lotsCache = new Map();
@@ -129,14 +130,14 @@ export function lotsOf(i, j) {
       if (roll < 0.06) {
         lots.push({
           kind: 'apartment', ox, oz,
-          w: int(rng, 9, 10.5), d: int(rng, 8, 9.5), h: int(rng, 8, 10.5),
+          w: int(rng, 9, 12), d: int(rng, 8, 11), h: int(rng, 8, 15),
           wall: pick(rng, APARTMENT_COLORS), roof: pick(rng, ROOF_COLORS), rotY: 0, chimney: false, fence: true,
         });
       } else if (roll < 0.90) {
         // house smaller than its lot so neighbouring houses read as separate
         lots.push({
           kind: 'house', ox, oz,
-          w: int(rng, 7, 9.5), d: int(rng, 6.5, 8.5), h: int(rng, 4, 7),
+          w: int(rng, 6.5, 10), d: int(rng, 6, 9.5), h: int(rng, 3.6, 8.5),
           wall: pick(rng, HOUSE_COLORS), roof: pick(rng, ROOF_COLORS),
           roofType: pick(rng, ['pyramid', 'gable']),
           rotY: chance(rng, 0.5) ? 0 : Math.PI, chimney: chance(rng, 0.7),
