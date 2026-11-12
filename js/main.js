@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { CONFIG, PITCH } from './core/config.js';
 import { t } from './core/i18n.js';
 import { rngFor } from './core/rng.js';
-import { TOWN_NAME, PLACES, STATIONS, stationWorld, randomSpotIn, lotsOf, worldToBlock, nearestStreetName } from './world/layout.js';
+import { TOWN_NAME, DISTRICT_NAME, PLACES, STATIONS, stationWorld, randomSpotIn, lotsOf, worldToBlock, nearestStreetName } from './world/layout.js';
 import { createChat } from './ui/chat.js';
 import { respond } from './ai/dialogue.js';
 import { createVoice } from './ai/voice.js';
@@ -382,7 +382,7 @@ function hudState() {
   const h = Math.floor(mins / 60), m = Math.floor(mins % 60);
   return {
     lang: state.lang,
-    townName: TOWN_NAME,
+    townName: `${TOWN_NAME} · ${DISTRICT_NAME}`,
     day,
     timeStr: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
     pop: NPC_DEFS.length,

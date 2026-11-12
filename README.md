@@ -55,6 +55,7 @@ affect later lives.
       cars.js           car meshes + drivable CarEntity (fuel, price)
       interiorSpecs.js  pure enterable-room data (sizes, furniture, collision)
       interior.js       builds the enterable rooms (one per building kind, off-map)
+      roofGeo.js        pure roof geometry data + per-house roof layout (hip/gable/flat)
     npc/
       data.js           NPC definitions: identity, personality, schedule, relations
       agents.js         schedule-driven agents: movement, needs, mood (pure logic)
@@ -212,7 +213,7 @@ client; an external AI backend can later be plugged into `js/ai/`.
 Actual repository status: Stage 0 (docs), **Stage 1 (playable 3D village prototype)**,
 **Stage 2 (first playable life: control an NPC + playable job, money, cars, unlocks)** and
 the first part of **Stage 3 (contextual conversations by text and voice + enterable
-buildings)** are implemented and tested (current build **v0.7.0**); the rest of stages
+buildings)** are implemented and tested (current build **v0.8.0**); the rest of stages
 3-7 is plan, not code.
 
 | Stage | Description | Status |
@@ -253,7 +254,7 @@ launcher (edit the `Exec=` path if you cloned the repo somewhere other than
 "Allow launching" if asked). Opening `index.html` directly via `file://` does
 **not** work (browsers block ES modules there) — always use `play.sh` / a server.
 
-Tip: the HUD shows the build version (e.g. `HUMANS v0.7.0`) and the population
+Tip: the HUD shows the build version (e.g. `HUMANS v0.8.0`) and the population
 (e.g. `46/400`) — if you ever see old numbers, hard-reload with **Ctrl+Shift+R**;
 `serve.py` already sends `no-store` so a normal reload is enough.
 
@@ -307,7 +308,7 @@ Top bar (always): **pause / 1x / 2x / 4x** time controls (1 game hour = 10 real
 minutes), **quality** (low/medium/high: shadows + pixel ratio), **ES/EN** language
 toggle, **fullscreen**.
 
-### Current build (v0.7.0) — implemented vs. known limitations
+### Current build (v0.8.0) — implemented vs. known limitations
 
 v0.7.0 fixes and upgrades: correct roofs on every house (hip pyramids and gable prisms
 aligned to each footprint with overhang, flat slabs on apartment blocks — unit-tested
@@ -347,6 +348,15 @@ inside, E exits) with furniture, warm lighting and collision; bilingual UI (ES/E
 quality settings (low/medium/high), fullscreen; dev server with no-store headers plus
 `play.sh` / `stop.sh` / `HUMANS.desktop` launchers; URL params for debugging and weak
 machines (`?q=low`, `?chunks=N`, `?selftest=1`, `?noframe=1`).
+
+v0.8.0 — the neon downtown: the central 13x13 blocks (the generated district
+**Neyama**, shown in the HUD and on the start screen) are now a dense
+metropolis core — tall apartment towers with window grids, neon roof trim and blinking
+red aircraft beacons, smaller houses packed between them, a **scramble crossing**
+(diagonal zebra stripes) at the central intersection, twice as many billboards on the
+central avenues, and neon shop signs on half of the downtown facades (RAMEN, KONBINI,
+PACHINKO, SAKE BAR…). The district name is generated from syllables and is always
+fictional — never a real city, per the project rules. Tested in `test/downtown.test.mjs`.
 
 Known limitations (by design, next stages): no save/offline simulation yet (money,
 approval and relationships are session-only); the phone/contact list and the cafe table

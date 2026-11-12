@@ -80,11 +80,18 @@ export function billboardText(rng, town) {
   return template(product, town);
 }
 
-const SHOP_TYPES = ['RAMEN', '24 HORAS', 'CAFÉ', 'BAR', 'TIENDA', 'FARMACIA', 'KARAOKE', 'MERCADO', 'PELUQUERÍA', 'SUSHI', 'VIDEOJUEGOS', 'LIBRERÍA'];
+const SHOP_TYPES = ['RAMEN', '24 HORAS', 'CAFÉ', 'BAR', 'TIENDA', 'FARMACIA', 'KARAOKE', 'MERCADO', 'PELUQUERÍA', 'SUSHI', 'VIDEOJUEGOS', 'LIBRERÍA', 'IZAKAYA', 'KONBINI', 'PACHINKO', 'SAKE BAR', 'ANIME', 'NOODLE BAR'];
 
 // Short glowing shop sign for building facades near the centre.
 export function shopName(rng) {
   return pick(rng, SHOP_TYPES);
+}
+
+// Fictional neon-district name, generated from syllables (never a real city).
+const NEON_A = ['Ne', 'Yoru', 'Kage', 'Hoshi', 'Sora', 'Aka', 'Tsuki', 'Kiri', 'Niji', 'Shin', 'Sei', 'Kuro'];
+const NEON_B = ['kyo', 'shima', 'gawa', 'mori', 'hara', 'oka', 'umi', 'kaze', 'yama', 'sawa', 'nishi', 'higashi'];
+export function neonCityName(rng) {
+  return pick(rng, NEON_A) + pick(rng, NEON_B);
 }
 
 export function cityName(rng) {

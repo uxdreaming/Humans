@@ -3,7 +3,7 @@
 
 import { t } from '../core/i18n.js';
 import { VERSION } from '../core/config.js';
-import { TOWN_NAME } from '../world/layout.js';
+import { TOWN_NAME, DISTRICT_NAME } from '../world/layout.js';
 
 export function createStartScreen(cb) {
   const root = document.getElementById('start');
@@ -14,7 +14,7 @@ export function createStartScreen(cb) {
 
   function texts() {
     document.getElementById('start-ver').textContent = `v${VERSION}`;
-    document.getElementById('start-town').textContent = TOWN_NAME;
+    document.getElementById('start-town').textContent = `${TOWN_NAME} — ${DISTRICT_NAME}`;
     document.getElementById('start-sub').textContent = t(lang, 'start.sub').replace('{town}', TOWN_NAME);
     search.placeholder = `🔍 ${t(lang, 'start.searchPh')}`;
     document.getElementById('start-observe').textContent = t(lang, 'start.observe');

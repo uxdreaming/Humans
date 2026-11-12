@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { CONFIG, PITCH } from '../core/config.js';
 import { rngFor, pick, chance } from '../core/rng.js';
 import {
-  inTown, blockToWorld, landmarkAt, lotsOf, streetCoord, streetNameAt, BILLBOARDS, PLACES, HALF_X, HALF_Z, STATIONS, stationWorld,
+  inTown, blockToWorld, landmarkAt, lotsOf, streetCoord, streetNameAt, BILLBOARDS, PLACES, HALF_X, HALF_Z, STATIONS, stationWorld, inDowntown, DOWNTOWN,
 } from './layout.js';
 import { makeTextTexture, makeNoiseTexture } from './textures.js';
 import { HIP_ROOF, GABLE_ROOF, roofPlan, roofHeight } from './roofGeo.js';
@@ -83,6 +83,7 @@ export class Town {
     this.chunks = new Map(); // "cx,cz" -> Group
     this.lampMat = new THREE.MeshStandardMaterial({ color: 0x555a60, emissive: 0xffd9a0, emissiveIntensity: 0, roughness: 0.4 });
     this.windowMat = new THREE.MeshStandardMaterial({ color: 0x2a3550, emissive: 0xffe6a8, emissiveIntensity: 0, roughness: 0.3 });
+    this.beaconMat = new THREE.MeshStandardMaterial({ color: 0x330000, emissive: 0xff2244, emissiveIntensity: 0.7 });
     this.texCache = new Map();
     this._t = 0;
 
@@ -137,6 +138,7 @@ export class Town {
   animate(dt) {
     if (this.fountainWater) this.fountainWater.rotation.y += dt * 0.6;
     this._t += dt;
+    if (this.beaconMat) this.beaconMat.emissiveIntensity = Math.sin(this._t * 4) > 0 ? 1.6 : 0.15; // tower beacons blink
     for (const b of this.birds) {
       const a = this._t * 0.45 + b.userData.off;
       b.position.set(Math.cos(a) * 18, 13 + Math.sin(this._t * 1.3 + b.userData.off) * 2.5, Math.sin(a) * 18);
@@ -255,7 +257,7 @@ export class Town {
         for (const lot of lotsOf(i, j)) {
           const lx = x + lot.ox, lz = z + lot.oz;
           if (lot.kind === 'house' || lot.kind === 'apartment') {
-            houses.push({ x: lx, z: lz, w: lot.w, d: lot.d, h: lot.h, wall: lot.wall, roof: lot.roof, roofType: lot.roofType || 'pyramid', rotY: lot.rotY, chimney: lot.chimney, apartment: lot.kind === 'apartment', fence: lot.fence });
+            houses.push({ x: lx, z: lz, w: lot.w, d: lot.d, h: lot.h, wall: lot.wall, roof: lot.roof, roofType: lot.roofType || 'pyramid', rotY: lot.rotY, chimney: lot.chimney, apartment: lot.kind === 'apartment', fence: lot.fence, downtown: inDowntown(i, j), tower: lot.kind === 'apartment' && lot.h >= 12 });
           } else if (lot.kind === 'empty') {
             if (rng() < 0.5) {
               bushes.push({
@@ -380,6 +382,16 @@ export class Town {
       }
     }
 
+    // scramble crossing: diagonal stripes across the central intersection
+    const cx0 = streetCoord(0), cz0 = streetCoord(0);
+    if (cx0 >= x0 - 0.1 && cx0 <= x0 + span + 0.1 && cz0 >= z0 - 0.1 && cz0 <= z0 + span + 0.1) {
+      for (const s of [-1, 1]) {
+        for (let k = -4; k <= 4; k++) {
+          zebra.push({ pos: [cx0 + k * 1.15, 0.046, cz0 + s * k * 1.15], rotY: s * Math.PI / 4, scale: [0.16, 1, 1] });
+        }
+      }
+    }
+
     // parked cars along the streets of the chunk
     const cars = [];
     const carColors = ['#b03a2e', '#2e4a6e', '#7d8a97', '#c9a24d', '#3a3f4a', '#5a9e5a', '#8a5ac0', '#d97f6a'];
@@ -417,6 +429,23 @@ export class Town {
     const flatRoofs = this.instanced(shared.wallGeo, roofMat, byKind.flat);
     if (flatRoofs) group.add(flatRoofs);
 
+    // neon trim on the roof edge of downtown towers + antenna with blinking beacon
+    const NEON_TRIM = [0xff4fa3, 0x4fd8ff, 0x9dff4f, 0xffd24f, 0xc77dff];
+    const trims = [], antennas = [], beacons = [];
+    houses.forEach((h, hi) => {
+      if (!h.tower) return;
+      const trng = rngFor(CONFIG.seed, 'trim', hi, Math.round(h.x), Math.round(h.z));
+      trims.push({ pos: [h.x, h.h + 0.12, h.z], rotY: h.rotY, scale: [h.w + 0.2, 0.16, h.d + 0.2], color: NEON_TRIM[Math.floor(trng() * NEON_TRIM.length)] });
+      antennas.push({ pos: [h.x, h.h + 1.6, h.z], rotY: 0, scale: [0.6, 3.4, 0.6] });
+      beacons.push({ pos: [h.x, h.h + 3.45, h.z], rotY: 0, scale: [0.8, 0.8, 0.8] });
+    });
+    const trimMesh = this.instanced(shared.wallGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }), trims);
+    if (trimMesh) { trimMesh.castShadow = false; group.add(trimMesh); }
+    const antennaMesh = this.instanced(shared.poleGeo, shared.poleMat, antennas);
+    if (antennaMesh) group.add(antennaMesh);
+    const beaconMesh = this.instanced(shared.headGeo, this.beaconMat, beacons);
+    if (beaconMesh) { beaconMesh.castShadow = false; group.add(beaconMesh); }
+
     // house doors (varied colours) + windows (windows glow at night via town.windowMat)
     const DOOR_COLORS = ['#4a2f1d', '#2e4a6e', '#5a3a1d', '#3a3a3a', '#6e3a2e'];
     const doors = this.instanced(shared.doorGeo, shared.doorMat,
@@ -450,12 +479,12 @@ export class Town {
     for (const h of houses) {
       const cos = Math.cos(h.rotY), sin = Math.sin(h.rotY);
       const fz = h.d / 2 + 0.06;
-      const cols = h.apartment ? 4 : 2;
-      const rows = h.apartment ? 2 : 1;
+      const cols = h.apartment ? (h.w > 9 ? 5 : 4) : 2;
+      const rows = h.apartment ? Math.max(2, Math.min(7, Math.round(h.h / 3.2))) : 1;
       for (let rI = 0; rI < rows; rI++) {
         for (let cI = 0; cI < cols; cI++) {
           const wx = (cI - (cols - 1) / 2) * (h.w / (cols + 0.5));
-          const wy = h.h * (h.apartment ? 0.32 + 0.38 * rI : 0.55);
+          const wy = rows > 1 ? h.h * (0.22 + 0.62 * (rI / (rows - 1))) : h.h * 0.55;
           winPts.push({ pos: [h.x + wx * cos + fz * sin, wy, h.z - wx * sin + fz * cos], rotY: h.rotY, scale: [1, 1, 1] });
         }
       }
@@ -467,8 +496,9 @@ export class Town {
     const NEON = [0xff4fa3, 0x4fd8ff, 0x9dff4f, 0xffd24f, 0xc77dff];
     for (let hi = 0; hi < houses.length; hi++) {
       const h = houses[hi];
-      if (h.apartment || Math.abs(h.x) > 5 * PITCH || Math.abs(h.z) > 5 * PITCH) continue;
-      if ((hi * 7 + 3) % 4 !== 0) continue;
+      const rMax = (h.downtown ? DOWNTOWN + 1 : 5) * PITCH;
+      if (h.apartment || Math.abs(h.x) > rMax || Math.abs(h.z) > rMax) continue;
+      if ((hi * 7 + 3) % (h.downtown ? 2 : 4) !== 0) continue;
       const srng = rngFor(CONFIG.seed, 'neon', hi, Math.round(h.x), Math.round(h.z));
       const name = shopName(srng);
       let tex = this.texCache.get('neon:' + name);

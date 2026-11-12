@@ -5,6 +5,13 @@ import { CONFIG, PITCH } from '../core/config.js';
 import { rngFor, pick, int, chance } from '../core/rng.js';
 import * as NAMES from '../core/names.js';
 
+// Neon downtown core: blocks with |i|,|j| <= DOWNTOWN get towers and denser ads.
+export const DOWNTOWN = 6;
+export const inDowntown = (i, j) => Math.abs(i) <= DOWNTOWN && Math.abs(j) <= DOWNTOWN;
+
+// Generated fictional name of the downtown district (shown in the HUD).
+export const DISTRICT_NAME = NAMES.neonCityName(rngFor(CONFIG.seed, 'district'));
+
 export const HALF_X = CONFIG.townBlocksX >> 1; // 15  -> i in [-15, 14]
 export const HALF_Z = CONFIG.townBlocksZ >> 1; // 25  -> j in [-25, 24]
 
@@ -93,13 +100,13 @@ export function nearestStreetName(x, z) {
 export const BILLBOARDS = [];
 {
   const ax = streetCoord(0);
-  for (let j = -HALF_Z; j < HALF_Z; j += 4) {
+  for (let j = -HALF_Z; j < HALF_Z; j += (Math.abs(j) <= 12 ? 2 : 4)) {
     BILLBOARDS.push({
       x: ax - CONFIG.streetWidth / 2 - 1.4, z: j * PITCH, ry: Math.PI / 2,
       text: NAMES.billboardText(rngFor(CONFIG.seed, 'ad', 'x', j), TOWN_NAME),
     });
   }
-  for (let i = -HALF_X + 1; i < HALF_X; i += 5) {
+  for (let i = -HALF_X + 1; i < HALF_X; i += (Math.abs(i) <= 12 ? 2 : 5)) {
     BILLBOARDS.push({
       x: i * PITCH, z: ax - CONFIG.streetWidth / 2 - 1.4, ry: 0,
       text: NAMES.billboardText(rngFor(CONFIG.seed, 'ad', 'z', i), TOWN_NAME),
@@ -125,9 +132,29 @@ export function lotsOf(i, j) {
   let lots = [];
   if (inTown(i, j) && !landmarkAt(i, j)) {
     const rng = rngFor(CONFIG.seed, 'block', i, j);
+    const dt = inDowntown(i, j);
     for (const [ox, oz] of LOT_OFFSETS) {
       const roll = rng();
-      if (roll < 0.06) {
+      if (dt && roll < 0.30) {
+        // downtown: tall apartment towers
+        lots.push({
+          kind: 'apartment', ox, oz,
+          w: int(rng, 9, 10.5), d: int(rng, 8, 10), h: int(rng, 10, 26),
+          wall: pick(rng, APARTMENT_COLORS), roof: pick(rng, ROOF_COLORS), rotY: 0, chimney: false, fence: chance(rng, 0.3),
+        });
+      } else if (dt && roll < 0.93) {
+        // downtown: smaller, denser houses between the towers
+        lots.push({
+          kind: 'house', ox, oz,
+          w: int(rng, 6, 8.5), d: int(rng, 5.5, 8), h: int(rng, 3.6, 6),
+          wall: pick(rng, HOUSE_COLORS), roof: pick(rng, ROOF_COLORS),
+          roofType: pick(rng, ['pyramid', 'gable']),
+          rotY: chance(rng, 0.5) ? 0 : Math.PI, chimney: chance(rng, 0.5),
+          fence: chance(rng, 0.4),
+        });
+      } else if (dt) {
+        lots.push({ kind: 'garden', ox, oz, trees: int(rng, 1, 3), bushes: int(rng, 1, 2), fence: true });
+      } else if (roll < 0.06) {
         lots.push({
           kind: 'apartment', ox, oz,
           w: int(rng, 9, 12), d: int(rng, 8, 11), h: int(rng, 8, 15),
