@@ -73,7 +73,7 @@ export function makeNameSprite(text) {
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
-  sprite.scale.set(3.4, 0.85, 1);
+  sprite.scale.set(4.4, 1.1, 1);
   sprite.position.y = 2.15;
   sprite.renderOrder = 10;
   return sprite;
@@ -91,8 +91,8 @@ export function makeMarkerSprite() {
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
-  s.scale.set(0.7, 0.7, 1);
-  s.position.y = 2.75;
+  s.scale.set(1.15, 1.15, 1);
+  s.position.y = 2.9;
   s.renderOrder = 9;
   return s;
 }

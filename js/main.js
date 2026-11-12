@@ -194,6 +194,20 @@ const observer = new ObserverCamera(camera, renderer.domElement, {
     }
   },
   onToggleFP: () => observer.toggleFP(),
+  onNearestNpc: () => {
+    if (state.controlling) return;
+    let best = null, bd = Infinity;
+    for (const a of agents) {
+      const d = Math.hypot(a.agent.pos.x - observer.target.x, a.agent.pos.z - observer.target.z);
+      if (d < bd) { bd = d; best = a; }
+    }
+    if (best) {
+      select(best);
+      observer.stopFollow();
+      observer.target.set(best.agent.pos.x, 1.4, best.agent.pos.z);
+      observer.dist = Math.min(observer.dist, 16);
+    }
+  },
   onEscape: () => {
     if (state.controlling) toggleControl(state.controlling);
     else select(null);

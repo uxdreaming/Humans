@@ -67,6 +67,7 @@ export class ObserverCamera {
       this.keys.add(k);
       if (k === 'f') cb.onToggleFollow();
       if (k === 'v') cb.onToggleFP();
+      if (k === 'n') cb.onNearestNpc();
       if (k === 'escape') cb.onEscape();
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));

@@ -18,7 +18,7 @@ export const STR = {
     fullscreen: 'Pantalla completa',
     exitFullscreen: 'Salir de pantalla completa',
     langBtn: 'EN',
-    hint: 'Clic en un NPC para inspeccionarlo · F seguir · Esc cancelar · WASD moverse · arrastrar: órbita · rueda: zoom',
+    hint: 'Clic en un NPC para inspeccionarlo · N: NPC más cercano · F seguir · Esc cancelar · WASD moverse · arrastrar: órbita · rueda: zoom',
     controlling: 'Controlando a',
     control: {
       take: 'Tomar control',
@@ -99,7 +99,7 @@ export const STR = {
     fullscreen: 'Fullscreen',
     exitFullscreen: 'Exit fullscreen',
     langBtn: 'ES',
-    hint: 'Click an NPC to inspect · F follow · Esc cancel · WASD move · drag: orbit · wheel: zoom · V first person when controlling',
+    hint: 'Click an NPC to inspect · N: nearest NPC · F follow · Esc cancel · WASD move · drag: orbit · wheel: zoom · V first person when controlling',
     controlling: 'Controlling',
     control: {
       take: 'Take control',
