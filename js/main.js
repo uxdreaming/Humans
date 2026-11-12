@@ -22,9 +22,15 @@ import { createHud } from './ui/hud.js';
 import { createPanel } from './ui/panel.js';
 import { createWorkUi } from './ui/work.js';
 import { createToasts } from './ui/toast.js';
+import { createStartScreen } from './ui/start.js';
 
 const bootMsg = document.getElementById('boot-msg');
 const setBoot = (m) => { if (bootMsg) bootMsg.textContent = m; };
+
+// URL params for debugging / weak machines: ?q=low|medium|high  ?chunks=N
+const qs = new URLSearchParams(location.search);
+if (qs.get('q')) localStorage.setItem('humans.quality', qs.get('q'));
+if (qs.get('chunks')) CONFIG.renderChunkRadius = Math.max(0, Math.min(3, parseInt(qs.get('chunks'), 10) || 1));
 
 // ---------------------------------------------------------------- renderer --
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -100,6 +106,20 @@ const state = {
 
 const toast = createToasts();
 const workUi = createWorkUi();
+
+// start screen: NPC search — picking one starts the game controlling them
+// (declared before setLang/applyQuality run at the bottom of the module)
+const startScreen = createStartScreen({
+  onPick: (a) => {
+    startScreen.hide();
+    state.paused = false;
+    toggleControl(a);
+  },
+  onObserve: () => {
+    startScreen.hide();
+    state.paused = false;
+  },
+});
 
 function applyQuality(q) {
   state.quality = q;
