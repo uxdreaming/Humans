@@ -38,6 +38,19 @@ const ROLES = [
   { role: 'nightowl',        gender: 'm', age: 26, occ: 'nightowl',        home: [5, 0],   work: null,     goals: ['make_friends', 'rest'] },
   { role: 'nightowl',        gender: 'f', age: 31, occ: 'nightowl',        home: [5, 1],   work: null,     goals: ['make_friends', 'study'] },
   { role: 'worker_bar_night', gender: 'm', age: 24, occ: 'barkeep',        home: [-5, 0],  work: 'bar',    goals: ['save_trip', 'rest'] },
+  { role: 'villager',        gender: 'f', age: 44, occ: 'villager',        home: [5, -1],  work: null,     goals: ['rest', 'help_town'] },
+  { role: 'villager2',       gender: 'm', age: 37, occ: 'villager',        home: [6, 0],   work: null,     goals: ['make_friends', 'save_trip'] },
+  { role: 'villager',        gender: 'm', age: 58, occ: 'villager',        home: [6, 1],   work: null,     goals: ['rest', 'help_town'] },
+  { role: 'villager2',       gender: 'f', age: 23, occ: 'villager',        home: [-5, 1],  work: null,     goals: ['study', 'make_friends'] },
+  { role: 'nightowl',        gender: 'f', age: 29, occ: 'nightowl',        home: [-6, 0],  work: null,     goals: ['make_friends', 'rest'] },
+  { role: 'villager',        gender: 'm', age: 49, occ: 'villager',        home: [0, 3],   work: null,     goals: ['save_trip', 'rest'] },
+  { role: 'villager2',       gender: 'f', age: 35, occ: 'villager',        home: [-2, 3],  work: null,     goals: ['make_friends', 'help_town'] },
+  { role: 'villager',        gender: 'm', age: 26, occ: 'villager',        home: [2, 3],   work: null,     goals: ['study', 'make_friends'] },
+  { role: 'worker_market',   gender: 'f', age: 29, occ: 'stocker',         home: [3, 3],   work: 'market', goals: ['save_trip', 'study'] },
+  { role: 'villager2',       gender: 'm', age: 41, occ: 'villager',        home: [-3, 2],  work: null,     goals: ['rest', 'help_town'] },
+  { role: 'villager',        gender: 'f', age: 33, occ: 'villager',        home: [-4, 2],  work: null,     goals: ['make_friends', 'save_trip'] },
+  { role: 'villager2',       gender: 'm', age: 52, occ: 'villager',        home: [4, 2],   work: null,     goals: ['rest', 'help_town'] },
+  { role: 'villager',        gender: 'f', age: 28, occ: 'villager',        home: [1, -3],  work: null,     goals: ['make_friends', 'study'] },
 ];
 
 // Relationships (symmetric): [a, b, type, strength]
@@ -66,6 +79,17 @@ const REL_EDGES = [
   [24, 25, 'friend', 60],
   [24, 14, 'friend', 55],
   [26, 22, 'coworker', 65],
+  [27, 28, 'neighbor', 50],
+  [29, 30, 'friend', 55],
+  [31, 12, 'coworker', 50],
+  [32, 8, 'neighbor', 45],
+  [33, 19, 'friend', 50],
+  [34, 6, 'neighbor', 40],
+  [35, 24, 'friend', 55],
+  [36, 14, 'neighbor', 45],
+  [37, 9, 'friend', 50],
+  [38, 2, 'neighbor', 45],
+  [39, 17, 'coworker', 50],
 ];
 
 function scheduleFor(role) {
@@ -208,12 +232,16 @@ function scheduleFor(role) {
   }
 }
 
+const usedNames = new Set();
 export const NPC_DEFS = ROLES.map((r, idx) => {
   const rng = rngFor(CONFIG.seed, 'npc', idx);
   const traits = shuffle(rng, TRAITS).slice(0, 3);
+  let name = NAMES.personName(rng, r.gender);
+  while (usedNames.has(name)) name = NAMES.personName(rng, r.gender);
+  usedNames.add(name);
   return {
     id: idx,
-    name: NAMES.personName(rng, r.gender),
+    name,
     gender: r.gender,
     age: r.age,
     occupation: r.occ,

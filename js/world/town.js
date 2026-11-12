@@ -151,7 +151,8 @@ export class Town {
     const p = new THREE.Vector3(), s = new THREE.Vector3();
     const col = new THREE.Color();
     list.forEach((it, idx) => {
-      e.set(it.rotX || 0, it.rotY || 0, it.rotZ || 0);
+      // 'YXZ' so gable slopes tilt around the house's own axis after yaw
+      e.set(it.rotX || 0, it.rotY || 0, it.rotZ || 0, 'YXZ');
       q.setFromEuler(e);
       p.set(it.pos[0], it.pos[1], it.pos[2]);
       s.set(it.scale[0], it.scale[1], it.scale[2]);
@@ -220,6 +221,14 @@ export class Town {
           const lx = x + lot.ox, lz = z + lot.oz;
           if (lot.kind === 'house' || lot.kind === 'apartment') {
             houses.push({ x: lx, z: lz, w: lot.w, d: lot.d, h: lot.h, wall: lot.wall, roof: lot.roof, roofType: lot.roofType || 'pyramid', rotY: lot.rotY, chimney: lot.chimney, apartment: lot.kind === 'apartment', fence: lot.fence });
+          } else if (lot.kind === 'empty') {
+            if (rng() < 0.5) {
+              bushes.push({
+                pos: [lx + (rng() * 2 - 1) * 3, 0.35, lz + (rng() * 2 - 1) * 3],
+                s: 0.6 + rng() * 0.4,
+                color: new THREE.Color(0x35682c).offsetHSL((rng() - 0.5) * 0.04, 0, (rng() - 0.5) * 0.08).getHex(),
+              });
+            }
           } else {
             for (let t = 0; t < lot.trees; t++) {
               trees.push({

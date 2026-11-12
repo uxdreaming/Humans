@@ -106,23 +106,26 @@ export function lotsOf(i, j) {
     const rng = rngFor(CONFIG.seed, 'block', i, j);
     for (const [ox, oz] of LOT_OFFSETS) {
       const roll = rng();
-      if (roll < 0.08) {
+      if (roll < 0.06) {
         lots.push({
           kind: 'apartment', ox, oz,
           w: int(rng, 9, 10.5), d: int(rng, 8, 9.5), h: int(rng, 8, 10.5),
-          wall: pick(rng, APARTMENT_COLORS), roof: pick(rng, ROOF_COLORS), rotY: 0, chimney: false,
+          wall: pick(rng, APARTMENT_COLORS), roof: pick(rng, ROOF_COLORS), rotY: 0, chimney: false, fence: true,
         });
-      } else if (roll < 0.95) {
+      } else if (roll < 0.90) {
+        // house smaller than its lot so neighbouring houses read as separate
         lots.push({
           kind: 'house', ox, oz,
-          w: int(rng, 8, 10.4), d: int(rng, 7, 9.4), h: int(rng, 4, 7),
+          w: int(rng, 7, 9.5), d: int(rng, 6.5, 8.5), h: int(rng, 4, 7),
           wall: pick(rng, HOUSE_COLORS), roof: pick(rng, ROOF_COLORS),
           roofType: pick(rng, ['pyramid', 'gable']),
           rotY: chance(rng, 0.5) ? 0 : Math.PI, chimney: chance(rng, 0.5),
-          fence: chance(rng, 0.35),
+          fence: chance(rng, 0.6),
         });
-      } else {
+      } else if (roll < 0.96) {
         lots.push({ kind: 'garden', ox, oz, trees: int(rng, 1, 2), bushes: int(rng, 1, 2), fence: true });
+      } else {
+        lots.push({ kind: 'empty', ox, oz });
       }
     }
   }

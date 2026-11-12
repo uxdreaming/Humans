@@ -12,7 +12,7 @@ export const CONFIG = {
   timeScale: 6,            // game-seconds per real second => 1 game hour = 10 real minutes
   startHour: 10,           // first game morning starts at 10:00 (NPCs already out)
   walkSpeed: 1.1,          // NPC walking speed in metres per game-second
-  npcCount: 27,            // test NPCs in stage 1 (incl. nocturnal ones)
+  npcCount: 40,            // test NPCs in stage 1 (incl. nocturnal ones)
   maxPopulation: 400,      // long-term population goal
 };
 
