@@ -9,6 +9,8 @@ import { rngFor, pick, chance } from '../core/rng.js';
 import {
   inTown, blockToWorld, landmarkAt, lotsOf, streetCoord, BILLBOARDS, PLACES, HALF_X, HALF_Z, STATIONS, stationWorld,
 } from './layout.js';
+import { makeTextTexture } from './textures.js';
+import { buildCarMesh, headlightMat, taillightMat } from './cars.js';
 
 // Shared (never disposed) assets -------------------------------------------------
 const shared = {
@@ -31,6 +33,8 @@ const shared = {
   wheelGeo: new THREE.CylinderGeometry(0.32, 0.32, 0.22, 10),
   chimneyGeo: new THREE.BoxGeometry(0.5, 1.2, 0.5),
   doorGeo: new THREE.BoxGeometry(1.2, 2, 0.12),
+  porchGeo: new THREE.BoxGeometry(2.6, 0.25, 1.7),
+  porchPostGeo: new THREE.CylinderGeometry(0.07, 0.07, 2.2, 6),
   windowBoxGeo: new THREE.BoxGeometry(0.9, 1, 0.1),
   zebraGeo: new THREE.BoxGeometry(CONFIG.streetWidth - 1.5, 0.04, 0.45),
   dashGeo: new THREE.BoxGeometry(0.35, 0.03, 1.6),
@@ -40,7 +44,8 @@ const shared = {
   carCabinMat: new THREE.MeshStandardMaterial({ color: 0x1c2733, roughness: 0.2, metalness: 0.3 }),
   wheelMat: new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.9 }),
   chimneyMat: new THREE.MeshStandardMaterial({ color: 0x8a5a4a, roughness: 0.9 }),
-  doorMat: new THREE.MeshStandardMaterial({ color: 0x4a2f1d, roughness: 0.9 }),
+  doorMat: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }),
+  porchMat: new THREE.MeshStandardMaterial({ color: 0x9a8a76, roughness: 0.9 }),
   zebraMat: new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 1 }),
   dashMat: new THREE.MeshStandardMaterial({ color: 0xcfcfcf, roughness: 1 }),
   bushMat: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }),
@@ -48,40 +53,8 @@ const shared = {
 };
 shared.wheelGeo.rotateZ(Math.PI / 2); // wheel axis across the car
 
-// shared emissive materials for night lights (cars, plaza string lights)
-const headlightMat = new THREE.MeshStandardMaterial({ color: 0xfff6c0, emissive: 0xfff2b0, emissiveIntensity: 0 });
-const taillightMat = new THREE.MeshStandardMaterial({ color: 0x881111, emissive: 0xff2211, emissiveIntensity: 0 });
+// shared emissive material for plaza string lights
 const stringBulbMat = new THREE.MeshStandardMaterial({ color: 0xffe9b0, emissive: 0xffc966, emissiveIntensity: 0 });
-
-export function makeTextTexture(text, { w = 512, h = 128, bg = '#1c2547', fg = '#ffd479', font = 40 } = {}) {
-  const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, w, h);
-  ctx.strokeStyle = fg; ctx.lineWidth = 6;
-  ctx.strokeRect(5, 5, w - 10, h - 10);
-  ctx.fillStyle = fg;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const parts = text.split('·');
-  if (parts.length > 1 && text.length > 26) {
-    ctx.font = `bold ${font - 8}px "Segoe UI", Arial`;
-    ctx.fillText(parts[0].trim(), w / 2, h / 2 - font / 2 - 4);
-    ctx.fillText(parts.slice(1).join('·').trim(), w / 2, h / 2 + font / 2 + 4);
-  } else {
-    let size = font;
-    ctx.font = `bold ${size}px "Segoe UI", Arial`;
-    while (ctx.measureText(text).width > w - 40 && size > 16) {
-      size -= 4;
-      ctx.font = `bold ${size}px "Segoe UI", Arial`;
-    }
-    ctx.fillText(text, w / 2, h / 2 + 2);
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
-  return tex;
-}
 
 export class Town {
   constructor(scene) {
@@ -335,14 +308,35 @@ export class Town {
       houses.map((h) => ({ pos: [h.x, h.h + 0.01, h.z], rotY: h.rotY + Math.PI / 4, scale: [h.w * 0.78, h.h * 0.55 + 1.2, h.d * 0.78], color: h.roof })));
     if (roofs) group.add(roofs);
 
-    // house doors + windows (windows glow at night via town.windowMat)
+    // house doors (varied colours) + windows (windows glow at night via town.windowMat)
+    const DOOR_COLORS = ['#4a2f1d', '#2e4a6e', '#5a3a1d', '#3a3a3a', '#6e3a2e'];
     const doors = this.instanced(shared.doorGeo, shared.doorMat,
-      houses.map((h) => {
+      houses.map((h, hi) => {
         const cos = Math.cos(h.rotY), sin = Math.sin(h.rotY);
         const fz = h.d / 2 + 0.07;
-        return { pos: [h.x + sin * fz, 1.0, h.z + cos * fz], rotY: h.rotY, scale: [1, 1, 1] };
+        return {
+          pos: [h.x + sin * fz, 1.0, h.z + cos * fz], rotY: h.rotY, scale: [1, 1, 1],
+          color: DOOR_COLORS[(hi * 7 + 3) % DOOR_COLORS.length],
+        };
       }));
     if (doors) group.add(doors);
+
+    // porches on ~40% of houses: slab + two posts in front of the door
+    const porches = [], porchPosts = [];
+    houses.forEach((h, hi) => {
+      if (h.apartment || ((hi * 13 + 5) % 10) >= 4) return;
+      const cos = Math.cos(h.rotY), sin = Math.sin(h.rotY);
+      const fz = h.d / 2 + 0.85;
+      porches.push({ pos: [h.x + sin * fz, 0.12, h.z + cos * fz], rotY: h.rotY, scale: [1, 1, 1] });
+      for (const px of [-1.0, 1.0]) {
+        const lx = px, lz = h.d / 2 + 1.55;
+        porchPosts.push({ pos: [h.x + lx * cos + lz * sin, 1.1, h.z - lx * sin + lz * cos], rotY: h.rotY, scale: [1, 1, 1] });
+      }
+    });
+    const porchMesh = this.instanced(shared.porchGeo, shared.porchMat, porches);
+    if (porchMesh) group.add(porchMesh);
+    const porchPostMesh = this.instanced(shared.porchPostGeo, shared.poleMat, porchPosts);
+    if (porchPostMesh) group.add(porchPostMesh);
     const winPts = [];
     for (const h of houses) {
       const cos = Math.cos(h.rotY), sin = Math.sin(h.rotY);
@@ -438,6 +432,7 @@ export class Town {
       case 'bar': return this.buildBar(x, z);
       case 'bakery': return this.buildBakery(x, z);
       case 'busstop': return this.buildBusStop(x, z);
+      case 'gas': return this.buildGas(x, z);
       default: return new THREE.Group();
     }
   }
@@ -815,34 +810,48 @@ export class Town {
     g.position.set(x, 0, z);
     return g;
   }
+
+  buildGas(x, z) {
+    const g = new THREE.Group();
+    const kiosk = new THREE.Mesh(new THREE.BoxGeometry(7, 3.4, 5), new THREE.MeshStandardMaterial({ color: 0xc9cdd4, roughness: 0.8 }));
+    kiosk.position.set(-6, 1.7, -4);
+    kiosk.castShadow = true; kiosk.receiveShadow = true;
+    g.add(kiosk);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(16, 0.25, 7), new THREE.MeshStandardMaterial({ color: 0xb03a2e, roughness: 0.7 }));
+    roof.position.set(2, 4.1, 0);
+    roof.castShadow = true;
+    g.add(roof);
+    for (const [px, pz] of [[-5, -3.4], [9, -3.4], [-5, 3.4], [9, 3.4]]) {
+      const post = new THREE.Mesh(shared.poleGeo, shared.poleMat);
+      post.position.set(px, 2.05, pz);
+      post.scale.set(1, 0.95, 1);
+      g.add(post);
+    }
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.2),
+      new THREE.MeshStandardMaterial({ map: makeTextTexture('GASOLINERA', { bg: '#b03a2e', fg: '#ffffff', font: 44 }) }));
+    sign.position.set(2, 3.4, 3.55);
+    g.add(sign);
+    // two pumps
+    for (const px of [-1, 3]) {
+      const pump = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.3, 0.6), new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.5 }));
+      pump.position.set(px, 0.65, 1.5);
+      pump.castShadow = true;
+      const top = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, 0.5), new THREE.MeshStandardMaterial({ color: 0xb03a2e, roughness: 0.5 }));
+      top.position.set(px, 1.55, 1.5);
+      g.add(pump, top);
+    }
+    for (const wx of [-7.5, -4.5]) {
+      const win = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1), this.windowMat);
+      win.position.set(wx, 1.8, -1.45);
+      g.add(win);
+    }
+    g.position.set(x, 0, z);
+    return g;
+  }
 }
 
 // ------------------------------------------------------------- traffic ---
 // A few cars driving loops on the central avenues so the town feels alive.
-function buildCarMesh(color) {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(shared.carBodyGeo, new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.5 }));
-  body.position.y = 0.55; body.castShadow = true;
-  const cabin = new THREE.Mesh(shared.carCabinGeo, shared.carCabinMat);
-  cabin.position.set(0, 0.95, -0.2); cabin.castShadow = true;
-  g.add(body, cabin);
-  for (const [wx, wz] of [[-0.85, 1.4], [0.85, 1.4], [-0.85, -1.4], [0.85, -1.4]]) {
-    const w = new THREE.Mesh(shared.wheelGeo, shared.wheelMat);
-    w.position.set(wx, 0.32, wz);
-    g.add(w);
-  }
-  // headlights / taillights (glow at night)
-  const lightGeo = new THREE.BoxGeometry(0.38, 0.14, 0.06);
-  for (const wx of [-0.55, 0.55]) {
-    const h = new THREE.Mesh(lightGeo, headlightMat);
-    h.position.set(wx, 0.55, 2.12);
-    const tl = new THREE.Mesh(lightGeo, taillightMat);
-    tl.position.set(wx, 0.55, -2.12);
-    g.add(h, tl);
-  }
-  return g;
-}
-
 export class Traffic {
   constructor(scene) {
     this.cars = [];

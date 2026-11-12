@@ -56,11 +56,14 @@ export class ObserverCamera {
     this.yaw = Math.PI * 0.22;
     this.pitch = 0.5;
     this.dist = 34;
-    this.mode = 'free'; // free | follow | control
+    this.mode = 'free'; // free | follow | control | drive
     this.followAgent = null;
+    this.car = null;
+    this.vel = { x: 0, z: 0 };
     this.firstPerson = false;
     this.keys = new Set();
     this._down = null;
+    this.baseFov = camera.fov;
 
     window.addEventListener('keydown', (e) => {
       const k = e.key.toLowerCase();
@@ -102,6 +105,7 @@ export class ObserverCamera {
     this.dist = 7;
     this.pitch = 0.35;
     this.firstPerson = false;
+    this.vel = { x: 0, z: 0 };
   }
 
   releaseControl() {
@@ -109,6 +113,19 @@ export class ObserverCamera {
     this.mode = 'free';
     this.followAgent = null;
     this.firstPerson = false;
+  }
+
+  drive(car) {
+    this.mode = 'drive';
+    this.car = car;
+    this.followAgent = null;
+    this.dist = 9.5;
+    this.pitch = 0.42;
+  }
+
+  exitDrive() {
+    this.mode = 'control';
+    this.car = null;
   }
 
   toggleFollow(agent) {
@@ -137,26 +154,70 @@ export class ObserverCamera {
   }
 
   update(dt) {
+    // ---- drive mode: arcade car ----
+    if (this.mode === 'drive' && this.car) {
+      const car = this.car;
+      const f = { x: Math.sin(car.heading), z: Math.cos(car.heading) };
+      const throttle = this.keys.has('w') ? 1 : this.keys.has('s') ? -0.55 : 0;
+      const steer = this.keys.has('a') ? 1 : this.keys.has('d') ? -1 : 0;
+      const engineOn = car.fuel > 0;
+      if (engineOn) {
+        car.speed += (throttle * 16 - car.speed * 0.9) * dt;
+      } else {
+        car.speed -= car.speed * 3 * dt; // engine off: coast to a stop
+      }
+      car.speed = Math.max(-6, Math.min(19, car.speed));
+      if (Math.abs(car.speed) < 0.05 && throttle === 0) car.speed = 0;
+      car.heading += steer * 2.1 * dt * Math.max(-1, Math.min(1, car.speed / 6));
+      car.pos.x += Math.sin(car.heading) * car.speed * dt;
+      car.pos.z += Math.cos(car.heading) * car.speed * dt;
+      collide(car.pos, 1.25);
+      car.mesh.position.set(car.pos.x, 0, car.pos.z);
+      car.mesh.rotation.y = car.heading;
+      this.target.set(car.pos.x, 1.2, car.pos.z);
+      const cp = Math.cos(this.pitch);
+      const back = this.firstPerson ? 0.3 : this.dist;
+      const desired = new THREE.Vector3(
+        car.pos.x - Math.sin(car.heading) * back * cp + this.dist * 0 * cp,
+        1.2 + back * Math.sin(this.pitch),
+        car.pos.z - Math.cos(car.heading) * back * cp,
+      );
+      this.camera.position.lerp(desired, 1 - Math.exp(-dt * 7));
+      this.camera.lookAt(car.pos.x + Math.sin(car.heading) * 4, 1.2, car.pos.z + Math.cos(car.heading) * 4);
+      return;
+    }
+
+    // ---- control mode: smooth accelerated movement (GTA/Minecraft feel) ----
     if (this.mode === 'control' && this.followAgent) {
       const a = this.followAgent.agent;
-      const sp = this.keys.has('shift') ? 7 : 4.2; // real m/s
-      let mx = 0, mz = 0;
+      const running = this.keys.has('shift');
+      const maxSp = running ? 7.5 : 4.5;
       const f = { x: -Math.sin(this.yaw), z: -Math.cos(this.yaw) };
       const r = { x: -f.z, z: f.x };
-      if (this.keys.has('w')) { mx += f.x; mz += f.z; }
-      if (this.keys.has('s')) { mx -= f.x; mz -= f.z; }
-      if (this.keys.has('a')) { mx -= r.x; mz -= r.z; }
-      if (this.keys.has('d')) { mx += r.x; mz += r.z; }
-      const len = Math.hypot(mx, mz);
-      if (len > 0) {
-        mx /= len; mz /= len;
-        a.pos.x += mx * sp * dt;
-        a.pos.z += mz * sp * dt;
-        collide(a.pos, 0.45);
-        a.heading = Math.atan2(mx, mz);
+      let ix = 0, iz = 0;
+      if (this.keys.has('w')) { ix += f.x; iz += f.z; }
+      if (this.keys.has('s')) { ix -= f.x; iz -= f.z; }
+      if (this.keys.has('a')) { ix -= r.x; iz -= r.z; }
+      if (this.keys.has('d')) { ix += r.x; iz += r.z; }
+      const ilen = Math.hypot(ix, iz);
+      if (ilen > 0) {
+        ix /= ilen; iz /= ilen;
+        this.vel.x += ix * 30 * dt;
+        this.vel.z += iz * 30 * dt;
+      }
+      // friction
+      const fr = Math.exp(-(ilen > 0 ? 1.2 : 9) * dt);
+      this.vel.x *= fr; this.vel.z *= fr;
+      const sp = Math.hypot(this.vel.x, this.vel.z);
+      if (sp > maxSp) { this.vel.x *= maxSp / sp; this.vel.z *= maxSp / sp; }
+      a.pos.x += this.vel.x * dt;
+      a.pos.z += this.vel.z * dt;
+      collide(a.pos, 0.45);
+      if (sp > 0.4) {
+        a.heading = Math.atan2(this.vel.x, this.vel.z);
         a.moving = true;
         a.state = 'walk';
-        a.walkPhase += dt * 9;
+        a.walkPhase += dt * (4 + sp * 1.3);
       } else {
         a.moving = false;
         a.state = 'idle';
@@ -169,8 +230,14 @@ export class ObserverCamera {
         this.target.y + dist * Math.sin(this.pitch),
         this.target.z + dist * cp * Math.cos(this.yaw),
       );
-      this.camera.position.lerp(desired, 1 - Math.exp(-dt * 14));
+      this.camera.position.lerp(desired, 1 - Math.exp(-dt * 12));
       this.camera.lookAt(this.target.x, this.firstPerson ? 1.68 : this.target.y, this.target.z);
+      // FOV widens when running
+      const wantFov = running && sp > 5 ? this.baseFov + 10 : this.baseFov;
+      if (Math.abs(this.camera.fov - wantFov) > 0.1) {
+        this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 6);
+        this.camera.updateProjectionMatrix();
+      }
       return;
     }
 

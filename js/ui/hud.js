@@ -64,7 +64,8 @@ export function createHud(cb) {
     qualitySel.options[2].textContent = t(L, 'high');
     langBtn.textContent = t(L, 'langBtn');
     fsBtn.textContent = s.fullscreen ? t(L, 'exitFullscreen') : t(L, 'fullscreen');
-    root.querySelector('#hud-ctrl').textContent = s.controllingName ? `${t(L, 'controlling')} ${s.controllingName}` : '';
+    const money = s.money != null ? ` · ${Math.floor(s.money)}€` : '';
+    root.querySelector('#hud-ctrl').textContent = s.controllingName ? `${t(L, 'controlling')} ${s.controllingName}${money}` : '';
   }
 
   root.classList.remove('hidden');

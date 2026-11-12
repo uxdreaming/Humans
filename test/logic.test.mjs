@@ -6,7 +6,7 @@ import { rngFor, mulberry32, hashString } from '../js/core/rng.js';
 import * as NAMES from '../js/core/names.js';
 import {
   inTown, blockToWorld, streetCoord, landmarkAt, lotsOf, PLACES,
-  BILLBOARDS, CITIES, TOWN_NAME, streetNameAt, nearestStreetName, HALF_X, HALF_Z,
+  BILLBOARDS, CITIES, TOWN_NAME, streetNameAt, nearestStreetName, HALF_X, HALF_Z, CAR_SPECS,
 } from '../js/world/layout.js';
 import { NPC_DEFS, scheduleEntryAt, isValidDef } from '../js/npc/data.js';
 import { Agent } from '../js/npc/agents.js';
@@ -59,6 +59,11 @@ import { Agent } from '../js/npc/agents.js';
   assert.ok(lots.length >= 2 && lots.length <= 4, '2x2 lots per block');
   assert.ok(lots.every((l) => l.kind === 'house' || l.kind === 'garden' || l.kind === 'apartment'));
   assert.ok(BILLBOARDS.length >= 10);
+  assert.equal(landmarkAt(4, -2).id, 'gas');
+  assert.equal(CAR_SPECS.length, 3);
+  for (const c of CAR_SPECS) {
+    assert.ok(c.price > 0 && inTown(...Object.values({ i: Math.round(c.pos.x / PITCH), j: Math.round(c.pos.z / PITCH) })));
+  }
   const sn1 = streetNameAt('x', streetCoord(0));
   const sn2 = streetNameAt('x', streetCoord(0));
   assert.equal(sn1, sn2);

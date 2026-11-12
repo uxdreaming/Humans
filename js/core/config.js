@@ -1,7 +1,7 @@
 // Global tuning constants for HUMANS.
 // Everything that should be tweakable without touching game logic lives here.
 
-export const VERSION = '0.3.0';
+export const VERSION = '0.4.0';
 
 export const CONFIG = {
   seed: 20261111,          // world seed: same seed => same town, same names
@@ -16,6 +16,9 @@ export const CONFIG = {
   walkSpeed: 1.1,          // NPC walking speed in metres per game-second
   npcCount: 40,            // test NPCs in stage 1 (incl. nocturnal ones)
   maxPopulation: 400,      // long-term population goal
+  carFuelPerMetre: 0.08,   // % of tank consumed per metre driven
+  refuelCost: 20,          // € to fill the tank at the gas station
+  carPrices: [150, 260, 420],
 };
 
 // Distance between two block centres = block + street.

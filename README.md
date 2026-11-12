@@ -219,6 +219,14 @@ npm run serve          # = python3 serve.py 8000  (dev server with no-store cach
 # then open http://localhost:8000
 ```
 
+**No terminal needed (Linux desktop):** double-click `play.sh` in the file
+manager — it starts the server in the background and opens the game in your
+browser. `stop.sh` stops the server. `HUMANS.desktop` is a ready-made desktop
+launcher (edit the `Exec=` path if you cloned the repo somewhere other than
+`/home/aru/Humans`, then copy it to your Desktop and double-click once, choosing
+"Allow launching" if asked). Opening `index.html` directly via `file://` does
+**not** work (browsers block ES modules there) — always use `play.sh` / a server.
+
 Tip: the HUD shows the build version (e.g. `HUMANS v0.3.0`) and the population
 (e.g. `40/400`) — if you ever see old numbers, hard-reload with **Ctrl+Shift+R**;
 `serve.py` already sends `no-store` so a normal reload is enough.

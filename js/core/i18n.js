@@ -91,7 +91,19 @@ export const STR = {
     places: {
       home: 'Su casa', plaza: 'Plaza Mayor', cafe: 'Café La Esquina',
       market: 'Supermercado El Centro', park: 'Parque del Nogal', church: 'Iglesia de Santa Vera',
-      bar: 'Bar El Faro', bakery: 'Panadería La Espiga', busstop: 'Parada de autobús',
+      bar: 'Bar El Faro', bakery: 'Panadería La Espiga', busstop: 'Parada de autobús', gas: 'Gasolinera',
+    },
+    drive: {
+      buy: 'E — Comprar coche',
+      enter: 'E — Subirse al coche',
+      exit: 'E — Bajarse',
+      refuel: 'R — Repostar',
+      noMoney: 'No tienes suficiente dinero',
+      bought: '¡Coche comprado! Ya es tuyo',
+      refueled: 'Depósito lleno',
+      emptyTank: 'Sin combustible: reposta en la gasolinera (R)',
+      speed: 'km/h',
+      fuel: 'Combustible',
     },
   },
   en: {
@@ -180,7 +192,19 @@ export const STR = {
     places: {
       home: 'Home', plaza: 'Main Plaza', cafe: 'La Esquina Café',
       market: 'El Centro Supermarket', park: 'Nogal Park', church: 'Santa Vera Church',
-      bar: 'El Faro Bar', bakery: 'La Espiga Bakery', busstop: 'Bus stop',
+      bar: 'El Faro Bar', bakery: 'La Espiga Bakery', busstop: 'Bus stop', gas: 'Gas station',
+    },
+    drive: {
+      buy: 'E — Buy car',
+      enter: 'E — Get in',
+      exit: 'E — Get out',
+      refuel: 'R — Refuel',
+      noMoney: 'Not enough money',
+      bought: 'Car bought! It is yours now',
+      refueled: 'Tank full',
+      emptyTank: 'Out of fuel: refuel at the gas station (R)',
+      speed: 'km/h',
+      fuel: 'Fuel',
     },
   },
 };

@@ -1,0 +1,12 @@
+# HUMANS desktop launcher (Linux Mint / Cinnamon).
+# To install: copy this file to your Desktop and double-click it once
+# (choose "Allow launching" / "Permitir ejecutar" if asked).
+# The Exec path below points to the repo cloned at /home/aru/Humans —
+# if you cloned it somewhere else, edit that path.
+[Desktop Entry]
+Type=Application
+Name=HUMANS
+Comment=Play HUMANS (opens the game in the browser)
+Exec=/home/aru/Humans/play.sh
+Terminal=false
+Categories=Game;

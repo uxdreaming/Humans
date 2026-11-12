@@ -7,11 +7,15 @@ import { CONFIG } from './core/config.js';
 import { t } from './core/i18n.js';
 import { TOWN_NAME, PLACES, STATIONS, stationWorld } from './world/layout.js';
 import { Town, Traffic } from './world/town.js';
+import { createCars } from './world/cars.js';
 import { Sky } from './world/sky.js';
+import { EffectComposer } from '../vendor/three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from '../vendor/three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from '../vendor/three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { NPC_DEFS, scheduleEntryAt } from './npc/data.js';
 import { Agent } from './npc/agents.js';
 import { WorkState, workUpdate, completeTask, isWorkNow } from './npc/work.js';
-import { buildHumanoid, makeNameSprite, makeMarkerSprite, poseCharacter } from './npc/characters.js';
+import { buildHumanoid, makeNameSprite, makeMarkerSprite, makeBubbleSprite, poseCharacter } from './npc/characters.js';
 import { ObserverCamera } from './player/camera.js';
 import { pickAgent } from './player/picking.js';
 import { createHud } from './ui/hud.js';
@@ -34,10 +38,22 @@ document.getElementById('app').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 2000);
 
+// bloom post-processing (disabled on low quality)
+let composer = null;
+let bloomPass = null;
+function buildComposer() {
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.5, 0.7, 0.82);
+  composer.addPass(bloomPass);
+}
+buildComposer();
+
 setBoot('building town…');
 const town = new Town(scene);
 const sky = new Sky(scene);
 const traffic = new Traffic(scene);
+const cars = createCars(scene); // buyable/drivable cars
 
 // ------------------------------------------------------------------ agents --
 setBoot('waking up the inhabitants…');
@@ -48,9 +64,11 @@ const agents = NPC_DEFS.map((def) => {
   group.add(makeNameSprite(def.name));
   const marker = makeMarkerSprite();
   group.add(marker);
+  const bubble = makeBubbleSprite();
+  group.add(bubble);
   group.position.set(agent.pos.x, 0, agent.pos.z);
   scene.add(group);
-  return { id: def.id, def, agent, group, parts, marker };
+  return { id: def.id, def, agent, group, parts, marker, bubble };
 });
 
 // work state per employed NPC
@@ -77,6 +95,7 @@ const state = {
   gameMinutes: CONFIG.startHour * 60,
   selected: null,
   controlling: null,
+  driving: null, // CarEntity being driven
 };
 
 const toast = createToasts();
@@ -87,7 +106,9 @@ function applyQuality(q) {
   localStorage.setItem('humans.quality', q);
   const pr = q === 'low' ? 1 : q === 'medium' ? Math.min(window.devicePixelRatio, 1.5) : window.devicePixelRatio;
   renderer.setPixelRatio(pr);
+  composer?.setPixelRatio(pr);
   renderer.shadowMap.enabled = q !== 'low';
+  if (bloomPass) bloomPass.enabled = q !== 'low';
   sky.setQuality(q);
 }
 
@@ -179,6 +200,8 @@ function hudState() {
     quality: state.quality,
     fullscreen: !!document.fullscreenElement,
     controllingName: state.controlling ? state.controlling.def.name : null,
+    money: (state.controlling && workStates.get(state.controlling.id)?.money)
+      ?? (state.selected && workStates.get(state.selected.id)?.money) ?? null,
   };
 }
 
@@ -215,11 +238,93 @@ const observer = new ObserverCamera(camera, renderer.domElement, {
   },
 });
 
-// E key: work task progress when on shift near a station
+// E key: drive/buy cars, or work task progress when on shift near a station
 let taskKey = 'restock';
 let taskProgress = 0;
+const promptEl = document.getElementById('prompt');
+const driveEl = document.getElementById('drive');
+
+function setPrompt(text) {
+  if (!text) { promptEl.classList.add('hidden'); return; }
+  promptEl.textContent = text;
+  promptEl.classList.remove('hidden');
+}
+
+function nearestCar(pos, maxD) {
+  let best = null, bd = maxD;
+  for (const car of cars) {
+    const d = Math.hypot(car.pos.x - pos.x, car.pos.z - pos.z);
+    if (d < bd) { bd = d; best = car; }
+  }
+  return best;
+}
+
+function enterDrive(car) {
+  if (car.fuel <= 0) { toast(t(state.lang, 'drive.emptyTank')); return; }
+  state.driving = car;
+  observer.drive(car);
+  if (state.controlling) state.controlling.group.visible = false;
+  toast(t(state.lang, 'drive.enter'));
+}
+
+function exitDrive() {
+  const car = state.driving;
+  if (!car) return;
+  observer.exitDrive(); // back to control mode
+  const c = state.controlling;
+  if (c) {
+    c.group.visible = true;
+    const side = { x: Math.cos(car.heading), z: -Math.sin(car.heading) };
+    c.agent.pos.x = car.pos.x + side.x * 2.4;
+    c.agent.pos.z = car.pos.z + side.z * 2.4;
+    c.agent.moving = false;
+    c.agent.state = 'idle';
+  }
+  state.driving = null;
+  toast(t(state.lang, 'drive.exit'));
+}
+
+function tryBuyOrEnter(car) {
+  const ws = workStates.get(state.controlling.id);
+  if (!car.owned) {
+    if (!ws || ws.money < car.spec.price) { toast(t(state.lang, 'drive.noMoney')); return; }
+    ws.money -= car.spec.price;
+    car.owned = true;
+    car.tag.visible = false;
+    toast(`${t(state.lang, 'drive.bought')} (${car.spec.price}€)`);
+  }
+  enterDrive(car);
+}
+
+function tryRefuel() {
+  const c = state.controlling;
+  if (!c) return;
+  const ws = workStates.get(c.id);
+  const gas = PLACES.gas.spot;
+  const nearGas = Math.hypot(c.agent.pos.x - gas.x, c.agent.pos.z - gas.z) < 10
+    || (state.driving && Math.hypot(state.driving.pos.x - gas.x, state.driving.pos.z - gas.z) < 12);
+  if (!nearGas) return;
+  const car = state.driving || cars.find((x) => x.owned);
+  if (!car || car.fuel >= 99) return;
+  if (!ws || ws.money < CONFIG.refuelCost) { toast(t(state.lang, 'drive.noMoney')); return; }
+  ws.money -= CONFIG.refuelCost;
+  car.fuel = 100;
+  toast(`${t(state.lang, 'drive.refueled')} (-${CONFIG.refuelCost}€)`);
+}
+
 window.addEventListener('keydown', (e) => {
-  if (e.key.toLowerCase() !== 'e' || !state.controlling) return;
+  const k = e.key.toLowerCase();
+  if (!state.controlling) return;
+  if (k === 'e') {
+    if (state.driving) { exitDrive(); return; }
+    const car = nearestCar(state.controlling.agent.pos, 3.6);
+    if (car) { tryBuyOrEnter(car); return; }
+    doWorkTask();
+  }
+  if (k === 'r') tryRefuel();
+});
+
+function doWorkTask() {
   const c = state.controlling;
   if (!isWorkNow(c.def, state.gameMinutes)) return;
   const spot = PLACES[c.def.workPlace].spot;
@@ -241,12 +346,13 @@ window.addEventListener('keydown', (e) => {
     const keys = ['restock', 'serve', 'organize'];
     taskKey = keys[Math.floor(Math.random() * keys.length)];
   }
-});
+}
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  composer?.setSize(window.innerWidth, window.innerHeight);
 });
 
 applyQuality(state.quality);
@@ -257,6 +363,7 @@ setBoot('ready');
 // -------------------------------------------------------------------- loop --
 let last = performance.now();
 let booted = false;
+let chatTick = 0;
 let customer = null; // visual customer at the counter while the "serve" task is active
 
 function ensureCustomer(c, now) {
@@ -300,16 +407,73 @@ function frame(now) {
 
   const skyInfo = sky.update(state.gameMinutes, observer.target);
   town.setNight(skyInfo.night);
+  for (const c of cars) c.setNight(skyInfo.night);
   town.update(observer.target.x, observer.target.z);
   town.animate(dt);
   traffic.update(dtGameMin);
 
+  // NPCs that end up close together start chatting (face each other + bubble)
+  chatTick -= dt;
+  if (chatTick <= 0) {
+    chatTick = 0.5;
+    for (let i = 0; i < agents.length; i++) {
+      for (let j = i + 1; j < agents.length; j++) {
+        const A = agents[i].agent, B = agents[j].agent;
+        if (A.controlled || B.controlled || A.moving || B.moving) continue;
+        if (Math.hypot(A.pos.x - B.pos.x, A.pos.z - B.pos.z) < 3.2) {
+          A.chatUntil = state.gameMinutes + 4;
+          B.chatUntil = state.gameMinutes + 4;
+          A.chatWith = B;
+          B.chatWith = A;
+        }
+      }
+    }
+  }
+
   for (const a of agents) {
     a.agent.update(a.agent.controlled ? 0 : dtGameMin, state.gameMinutes);
+    if (a.agent.chatWith && (a.agent.chatUntil || 0) > state.gameMinutes && !a.agent.controlled && !a.agent.moving) {
+      const o = a.agent.chatWith;
+      a.agent.heading = Math.atan2(o.pos.x - a.agent.pos.x, o.pos.z - a.agent.pos.z);
+    }
     a.group.position.set(a.agent.pos.x, 0, a.agent.pos.z);
     a.group.rotation.y = a.agent.heading;
     poseCharacter(a.parts, a.agent, now);
     a.marker.material.opacity = 0.55 + 0.45 * Math.sin(now / 300 + a.id * 1.7);
+    a.bubble.visible = (a.agent.chatUntil || 0) > state.gameMinutes && !a.agent.controlled;
+  }
+
+  // driving: fuel consumption + drive HUD + prompt
+  if (state.driving) {
+    const car = state.driving;
+    car.fuel = Math.max(0, car.fuel - Math.abs(car.speed) * dt * CONFIG.carFuelPerMetre);
+    if (car.fuel === 0 && !car._warned) { car._warned = true; toast(t(state.lang, 'drive.emptyTank')); }
+    if (car.fuel > 0) car._warned = false;
+    const kmh = Math.round(Math.abs(car.speed) * 3.6);
+    const ws = workStates.get(state.controlling?.id);
+    driveEl.innerHTML = `
+      <div class="spd">${kmh} <small>${t(state.lang, 'drive.speed')}</small></div>
+      <div class="bar"><div style="width:${Math.round(car.fuel)}%"></div></div>
+      <div class="lbl">${t(state.lang, 'drive.fuel')} ${Math.round(car.fuel)}% · ${t(state.lang, 'drive.exit')}</div>
+      ${ws ? `<div class="money">${Math.floor(ws.money)}€</div>` : ''}
+    `;
+    driveEl.classList.remove('hidden');
+    setPrompt(null);
+  } else {
+    driveEl.classList.add('hidden');
+    // interaction prompt when controlling on foot
+    if (state.controlling) {
+      const car = nearestCar(state.controlling.agent.pos, 3.6);
+      if (car) {
+        setPrompt(car.owned ? t(state.lang, 'drive.enter') : `${t(state.lang, 'drive.buy')} ${car.spec.price}€`);
+      } else {
+        const gas = PLACES.gas.spot;
+        if (Math.hypot(state.controlling.agent.pos.x - gas.x, state.controlling.agent.pos.z - gas.z) < 10
+          && cars.some((c) => c.owned && c.fuel < 99)) {
+          setPrompt(`${t(state.lang, 'drive.refuel')} ${CONFIG.refuelCost}€`);
+        } else setPrompt(null);
+      }
+    } else setPrompt(null);
   }
 
   // work system for the controlled NPC
@@ -354,7 +518,8 @@ function frame(now) {
 
   observer.update(dt);
   hud.update(hudState());
-  renderer.render(scene, camera);
+  if (composer) composer.render();
+  else renderer.render(scene, camera);
 
   if (!booted) {
     booted = true;

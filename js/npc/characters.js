@@ -51,8 +51,44 @@ export function buildHumanoid(appearance) {
   hair.position.set(0, 1.71, -0.02);
   parts.hair = hair;
 
+  // ~50% wear a hat
+  if (Math.random() < 0.5) {
+    const hatColor = [0x2e2018, 0x4a3b6e, 0x7a2e2e, 0x2e5a3a, 0xc9a24d][Math.floor(Math.random() * 5)];
+    const hatMat = new THREE.MeshStandardMaterial({ color: hatColor, roughness: 0.9 });
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.32, 0.05, 12), hatMat);
+    brim.position.y = 1.82;
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.19, 0.2, 12), hatMat);
+    top.position.y = 1.91;
+    group.add(brim, top);
+    parts.hat = [brim, top];
+  }
+
   group.add(legL, legR, body, armL, armR, head, hair);
   return { group, parts };
+}
+
+// chat bubble shown when two NPCs are talking
+export function makeBubbleSprite() {
+  const c = document.createElement('canvas');
+  c.width = 96; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  ctx.beginPath();
+  ctx.roundRect(4, 4, 88, 48, 14);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(30, 52); ctx.lineTo(24, 63); ctx.lineTo(44, 52); ctx.fill();
+  ctx.fillStyle = '#1c2547';
+  ctx.font = 'bold 30px Arial';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('…', 48, 28);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, visible: false }));
+  s.scale.set(1.1, 0.75, 1);
+  s.position.y = 2.5;
+  s.renderOrder = 11;
+  return s;
 }
 
 // name label sprite above the head

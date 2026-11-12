@@ -161,6 +161,36 @@ body {
 }
 #start-observe:hover { background: rgba(255, 255, 255, 0.2); }
 
+/* ---------- interaction prompt ---------- */
+#prompt {
+  position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%);
+  z-index: 20;
+  background: rgba(12, 17, 36, 0.9);
+  border: 1px solid #ffd479;
+  color: #ffd479;
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 13px; font-weight: 600;
+}
+
+/* ---------- drive HUD ---------- */
+#drive {
+  position: fixed; bottom: 44px; right: 16px; z-index: 20;
+  width: 210px;
+  background: rgba(12, 17, 36, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  backdrop-filter: blur(8px);
+}
+#drive .spd { font-size: 26px; font-weight: 800; color: #ffd479; font-variant-numeric: tabular-nums; }
+#drive .spd small { font-size: 11px; color: #9fb0d8; font-weight: 400; }
+#drive .bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+#drive .bar > div { height: 100%; background: linear-gradient(90deg, #6ee7a0, #ffd479, #ff7a59); border-radius: 4px; }
+#drive .lbl { color: #9fb0d8; font-size: 11px; margin-top: 3px; }
+#drive .money { color: #6ee7a0; margin-top: 4px; }
+
 /* ---------- toasts ---------- */
 #toasts {
   position: fixed; top: 56px; left: 50%; transform: translateX(-50%);

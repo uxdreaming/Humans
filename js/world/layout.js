@@ -31,6 +31,7 @@ export const LANDMARKS = [
   { id: 'bar',    name: 'Bar El Faro',             block: [-2, 1],  kind: 'bar'    },
   { id: 'bakery', name: 'Panadería La Espiga',     block: [1, -1],  kind: 'bakery' },
   { id: 'busstop', name: 'Parada de Autobús',      block: [-1, 0],  kind: 'busstop' },
+  { id: 'gas',     name: 'Gasolinera',             block: [4, -2],  kind: 'gas' },
 ];
 
 const landmarkByBlock = new Map(LANDMARKS.map((l) => [`${l.block[0]},${l.block[1]}`, l]));
@@ -44,7 +45,7 @@ for (const l of LANDMARKS) {
 }
 
 // Where an NPC stands when "at" a place (in front of the building, not inside).
-const SPOT_OFFSETS = { plaza: [0, 0], cafe: [0, 9], church: [0, 9], market: [0, -11], park: [0, 0], bar: [0, 8], bakery: [0, 8], busstop: [0, 7] };
+const SPOT_OFFSETS = { plaza: [0, 0], cafe: [0, 9], church: [0, 9], market: [0, -11], park: [0, 0], bar: [0, 8], bakery: [0, 8], busstop: [0, 7], gas: [0, 11] };
 for (const id of Object.keys(PLACES)) {
   const [dx, dz] = SPOT_OFFSETS[id] || [0, 0];
   PLACES[id].spot = { x: PLACES[id].x + dx, z: PLACES[id].z + dz };
@@ -142,6 +143,14 @@ export const BENCHES = {
   }),
   park: [{ x: PLACES.park.x + 5, z: PLACES.park.z - 6 }],
 };
+
+// ------------------------------------------------------------- cars for sale ---
+// Parked at the gas station and the supermarket parking lot.
+export const CAR_SPECS = [
+  { id: 'car_red', price: 150, color: '#b03a2e', pos: { x: 4 * PITCH + 7, z: -2 * PITCH + 7 }, rotY: Math.PI / 2 },
+  { id: 'car_blue', price: 260, color: '#2e4a6e', pos: { x: 4 * PITCH + 11, z: -2 * PITCH + 8 }, rotY: Math.PI / 2 },
+  { id: 'car_gold', price: 420, color: '#c9a24d', pos: { x: 96 - 8, z: -32 - 15 }, rotY: 0 },
+];
 
 // --------------------------------------------------------- work stations ---
 // Interactive spots at the supermarket (stage 2 work tasks).
