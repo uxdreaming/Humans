@@ -1,11 +1,12 @@
 // Top HUD bar: town name, clock, time controls, quality, language, fullscreen.
 
 import { t } from '../core/i18n.js';
+import { VERSION } from '../core/config.js';
 
 export function createHud(cb) {
   const root = document.getElementById('hud');
   root.innerHTML = `
-    <span class="brand">HUMANS</span>
+    <span class="brand">HUMANS v${VERSION}</span>
     <span class="town" data-k="town"></span>
     <span class="pop" data-k="pop"></span>
     <select id="hud-npcs"></select>

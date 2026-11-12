@@ -215,9 +215,13 @@ and tested; stages 3-7 are plan, not code.
 The game is a static web app (no build step). From the repository root:
 
 ```bash
-npm run serve          # = python3 -m http.server 8000
+npm run serve          # = python3 serve.py 8000  (dev server with no-store cache headers)
 # then open http://localhost:8000
 ```
+
+Tip: the HUD shows the build version (e.g. `HUMANS v0.2.0`) and the population
+(e.g. `40/400`) — if you ever see old numbers, hard-reload with **Ctrl+Shift+R**;
+`serve.py` already sends `no-store` so a normal reload is enough.
 
 Any static file server works (it will also be deployable as-is on static hosting).
 Requirement: a modern browser with WebGL.

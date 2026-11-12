@@ -1,6 +1,8 @@
 // Global tuning constants for HUMANS.
 // Everything that should be tweakable without touching game logic lives here.
 
+export const VERSION = '0.2.0';
+
 export const CONFIG = {
   seed: 20261111,          // world seed: same seed => same town, same names
   townBlocksX: 30,         // town size in blocks (city blocks / "cuadras"), X axis
