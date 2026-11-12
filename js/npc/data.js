@@ -51,6 +51,12 @@ const ROLES = [
   { role: 'villager',        gender: 'f', age: 33, occ: 'villager',        home: [-4, 2],  work: null,     goals: ['make_friends', 'save_trip'] },
   { role: 'villager2',       gender: 'm', age: 52, occ: 'villager',        home: [4, 2],   work: null,     goals: ['rest', 'help_town'] },
   { role: 'villager',        gender: 'f', age: 28, occ: 'villager',        home: [1, -3],  work: null,     goals: ['make_friends', 'study'] },
+  { role: 'teacher',         gender: 'f', age: 36, occ: 'teacher',         home: [5, 3],   work: 'school',  goals: ['study', 'help_town'] },
+  { role: 'mayor',           gender: 'm', age: 47, occ: 'mayor',           home: [-5, 3],  work: 'townhall', goals: ['help_town', 'save_trip'] },
+  { role: 'villager',        gender: 'm', age: 33, occ: 'villager',        home: [-6, 1],  work: null,     goals: ['make_friends', 'rest'] },
+  { role: 'villager2',       gender: 'f', age: 27, occ: 'villager',        home: [6, 2],   work: null,     goals: ['study', 'make_friends'] },
+  { role: 'villager',        gender: 'f', age: 58, occ: 'villager',        home: [7, 0],   work: null,     goals: ['rest', 'help_town'] },
+  { role: 'villager2',       gender: 'm', age: 30, occ: 'villager',        home: [-7, 0],  work: null,     goals: ['save_trip', 'rest'] },
 ];
 
 // Relationships (symmetric): [a, b, type, strength]
@@ -90,6 +96,11 @@ const REL_EDGES = [
   [37, 9, 'friend', 50],
   [38, 2, 'neighbor', 45],
   [39, 17, 'coworker', 50],
+  [40, 41, 'coworker', 70],
+  [40, 0, 'neighbor', 50],
+  [42, 43, 'friend', 50],
+  [44, 45, 'neighbor', 45],
+  [40, 8, 'friend', 55],
 ];
 
 function scheduleFor(role) {
@@ -226,6 +237,28 @@ function scheduleFor(role) {
         { from: 16, to: 18, act: 'stroll', place: 'park' },
         { from: 18, to: 20, act: 'social', place: 'bar' },
         { from: 20, to: 24, act: 'stroll', place: 'plaza' },
+      ];
+    case 'teacher':
+      return [
+        { from: 0, to: 7, act: 'sleep', place: 'home' },
+        { from: 7, to: 8, act: 'ready', place: 'home' },
+        { from: 8, to: 15, act: 'work', place: 'school' },
+        { from: 15, to: 16, act: 'lunch', place: 'cafe' },
+        { from: 16, to: 17, act: 'work', place: 'school' },
+        { from: 17, to: 19, act: 'stroll', place: 'plaza' },
+        { from: 19, to: 21, act: 'social', place: 'bar' },
+        { from: 21, to: 24, act: 'sleep', place: 'home' },
+      ];
+    case 'mayor':
+      return [
+        { from: 0, to: 7, act: 'sleep', place: 'home' },
+        { from: 7, to: 8, act: 'ready', place: 'home' },
+        { from: 8, to: 12, act: 'work', place: 'townhall' },
+        { from: 12, to: 13, act: 'lunch', place: 'cafe' },
+        { from: 13, to: 17, act: 'work', place: 'townhall' },
+        { from: 17, to: 19, act: 'stroll', place: 'plaza2' },
+        { from: 19, to: 21, act: 'social', place: 'cafe' },
+        { from: 21, to: 24, act: 'sleep', place: 'home' },
       ];
     default:
       return [{ from: 0, to: 24, act: 'stroll', place: 'plaza' }];

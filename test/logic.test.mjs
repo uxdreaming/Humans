@@ -5,7 +5,7 @@ import { CONFIG, PITCH } from '../js/core/config.js';
 import { rngFor, mulberry32, hashString } from '../js/core/rng.js';
 import * as NAMES from '../js/core/names.js';
 import {
-  inTown, blockToWorld, streetCoord, landmarkAt, lotsOf, PLACES,
+  inTown, blockToWorld, streetCoord, landmarkAt, lotsOf, PLACES, landmarkRects,
   BILLBOARDS, CITIES, TOWN_NAME, streetNameAt, nearestStreetName, HALF_X, HALF_Z, CAR_SPECS,
 } from '../js/world/layout.js';
 import { NPC_DEFS, scheduleEntryAt, isValidDef } from '../js/npc/data.js';
@@ -37,10 +37,10 @@ import { Agent } from '../js/npc/agents.js';
 // --- layout: town is 30 x 50 blocks ---
 {
   assert.equal(PITCH, CONFIG.blockSize + CONFIG.streetWidth);
-  assert.equal(HALF_X, 15);
-  assert.equal(HALF_Z, 25);
-  assert.ok(inTown(-15, -25) && inTown(14, 24));
-  assert.ok(!inTown(15, 0) && !inTown(0, 25) && !inTown(-16, 0));
+  assert.equal(HALF_X, 30);
+  assert.equal(HALF_Z, 40);
+  assert.ok(inTown(-30, -40) && inTown(29, 39));
+  assert.ok(!inTown(30, 0) && !inTown(0, 40) && !inTown(-31, 0));
   assert.deepEqual(blockToWorld(2, -1), { x: 2 * PITCH, z: -1 * PITCH });
   assert.equal(streetCoord(0), PITCH / 2);
   assert.equal(streetCoord(33), PITCH / 2 + PITCH);
@@ -60,6 +60,10 @@ import { Agent } from '../js/npc/agents.js';
   assert.ok(lots.every((l) => l.kind === 'house' || l.kind === 'garden' || l.kind === 'apartment'));
   assert.ok(BILLBOARDS.length >= 10);
   assert.equal(landmarkAt(4, -2).id, 'gas');
+  assert.equal(landmarkAt(5, 2).id, 'townhall');
+  assert.equal(landmarkAt(-5, 2).id, 'school');
+  assert.equal(landmarkAt(-4, -3).id, 'plaza2');
+  assert.equal(landmarkRects().length, 8, 'collision rects for all solid landmarks');
   assert.equal(CAR_SPECS.length, 3);
   for (const c of CAR_SPECS) {
     assert.ok(c.price > 0 && inTown(...Object.values({ i: Math.round(c.pos.x / PITCH), j: Math.round(c.pos.z / PITCH) })));

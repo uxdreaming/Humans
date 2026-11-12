@@ -5,7 +5,8 @@
 import * as THREE from 'three';
 import { CONFIG } from './core/config.js';
 import { t } from './core/i18n.js';
-import { TOWN_NAME, PLACES, STATIONS, stationWorld } from './world/layout.js';
+import { TOWN_NAME, PLACES, STATIONS, stationWorld, randomSpotIn } from './world/layout.js';
+import { UNLOCKS, newlyUnlocked } from './core/unlocks.js';
 import { Town, Traffic } from './world/town.js';
 import { createCars } from './world/cars.js';
 import { Sky } from './world/sky.js';
@@ -102,6 +103,9 @@ const state = {
   selected: null,
   controlling: null,
   driving: null, // CarEntity being driven
+  unlocked: new Set(),
+  priceMult: 1,   // car discount unlock
+  busPass: false, // bus pass unlock
 };
 
 const toast = createToasts();
@@ -304,14 +308,17 @@ function exitDrive() {
   toast(t(state.lang, 'drive.exit'));
 }
 
+function carPrice(car) { return Math.round(car.spec.price * state.priceMult); }
+
 function tryBuyOrEnter(car) {
   const ws = workStates.get(state.controlling.id);
+  const price = carPrice(car);
   if (!car.owned) {
-    if (!ws || ws.money < car.spec.price) { toast(t(state.lang, 'drive.noMoney')); return; }
-    ws.money -= car.spec.price;
+    if (!ws || ws.money < price) { toast(t(state.lang, 'drive.noMoney')); return; }
+    ws.money -= price;
     car.owned = true;
     car.tag.visible = false;
-    toast(`${t(state.lang, 'drive.bought')} (${car.spec.price}€)`);
+    toast(`${t(state.lang, 'drive.bought')} (${price}€)`);
   }
   enterDrive(car);
 }
@@ -339,6 +346,21 @@ window.addEventListener('keydown', (e) => {
     if (state.driving) { exitDrive(); return; }
     const car = nearestCar(state.controlling.agent.pos, 3.6);
     if (car) { tryBuyOrEnter(car); return; }
+    // bus stop: travel to the main plaza with the bus pass unlock
+    const bs = PLACES.busstop.spot;
+    if (Math.hypot(state.controlling.agent.pos.x - bs.x, state.controlling.agent.pos.z - bs.z) < 4.5) {
+      const ws = workStates.get(state.controlling.id);
+      if (state.busPass) {
+        if (ws && ws.money >= 2) {
+          ws.money -= 2;
+          const s = randomSpotIn('plaza', Math.random);
+          state.controlling.agent.pos.x = s.x;
+          state.controlling.agent.pos.z = s.z;
+          toast(t(state.lang, 'bus.travel'));
+        } else toast(t(state.lang, 'drive.noMoney'));
+      } else toast(t(state.lang, 'bus.needPass'));
+      return;
+    }
     doWorkTask();
   }
   if (k === 'r') tryRefuel();
@@ -363,7 +385,7 @@ function doWorkTask() {
     const ev = completeTask(ws);
     toast(t(state.lang, 'work.taskDone'));
     if (ev.praise) toast(t(state.lang, 'work.praise'));
-    const keys = ['restock', 'serve', 'organize'];
+    const keys = ['restock', 'serve', 'organize', 'clean'];
     taskKey = keys[Math.floor(Math.random() * keys.length)];
   }
 }
@@ -378,6 +400,7 @@ window.addEventListener('resize', () => {
 applyQuality(state.quality);
 setLang(state.lang);
 hud.setNpcs(agents.map((a) => ({ id: a.id, name: a.def.name })), state.lang);
+panel.setUnlocks(state.unlocked);
 setBoot('ready');
 
 // -------------------------------------------------------------------- loop --
@@ -485,7 +508,9 @@ function frame(now) {
     if (state.controlling) {
       const car = nearestCar(state.controlling.agent.pos, 3.6);
       if (car) {
-        setPrompt(car.owned ? t(state.lang, 'drive.enter') : `${t(state.lang, 'drive.buy')} ${car.spec.price}€`);
+        setPrompt(car.owned ? t(state.lang, 'drive.enter') : `${t(state.lang, 'drive.buy')} ${carPrice(car)}€`);
+      } else if (Math.hypot(state.controlling.agent.pos.x - PLACES.busstop.spot.x, state.controlling.agent.pos.z - PLACES.busstop.spot.z) < 4.5) {
+        setPrompt(state.busPass ? t(state.lang, 'bus.prompt') : t(state.lang, 'bus.needPass'));
       } else {
         const gas = PLACES.gas.spot;
         if (Math.hypot(state.controlling.agent.pos.x - gas.x, state.controlling.agent.pos.z - gas.z) < 10
@@ -501,6 +526,16 @@ function frame(now) {
     const c = state.controlling;
     ensureCustomer(c, now);
     const ws = workStates.get(c.id);
+    if (ws) {
+      // unlock / achievement checks against money, approval and tasks
+      for (const id of newlyUnlocked(ws, state.unlocked)) {
+        state.unlocked.add(id);
+        toast(`🏆 ${t(state.lang, `unlocks.${id}.name`)} — ${t(state.lang, `unlocks.${id}.desc`)}`);
+        if (id === 'promotion') ws.salaryMult = 1.5;
+        if (id === 'car_discount') state.priceMult = 0.7;
+        if (id === 'bus_pass') state.busPass = true;
+      }
+    }
     if (ws) {
       const spot = PLACES[c.def.workPlace].spot;
       const atWork = isWorkNow(c.def, state.gameMinutes) &&
@@ -519,6 +554,7 @@ function frame(now) {
           placeName: t(state.lang, `places.${c.def.workPlace}`),
           taskKey, progress: taskProgress, near,
           money: ws.money, approval: ws.approval,
+          salary: Math.round(ws.salaryPerHour * (ws.salaryMult || 1) * 10) / 10,
         });
       } else {
         workUi.update(null);

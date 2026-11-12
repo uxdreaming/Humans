@@ -32,7 +32,26 @@ export const LANDMARKS = [
   { id: 'bakery', name: 'Panadería La Espiga',     block: [1, -1],  kind: 'bakery' },
   { id: 'busstop', name: 'Parada de Autobús',      block: [-1, 0],  kind: 'busstop' },
   { id: 'gas',     name: 'Gasolinera',             block: [4, -2],  kind: 'gas' },
+  { id: 'townhall', name: 'Ayuntamiento',          block: [5, 2],   kind: 'townhall' },
+  { id: 'school',  name: 'Escuela',                block: [-5, 2],  kind: 'school' },
+  { id: 'plaza2',  name: 'Plaza del Mercado',      block: [-4, -3], kind: 'plaza2' },
 ];
+
+// building footprint half-sizes for collision (plazas/park/busstop are walkable)
+export const LANDMARK_SIZES = {
+  cafe: [7.5, 5.5], church: [6.5, 9], market: [12.5, 7.5], bar: [5.5, 4.5],
+  bakery: [6.5, 5], gas: [8.5, 5.5], townhall: [7.5, 6], school: [9.5, 6.5],
+};
+export function landmarkRects() {
+  const out = [];
+  for (const l of LANDMARKS) {
+    const s = LANDMARK_SIZES[l.id];
+    if (!s) continue;
+    const p = PLACES[l.id];
+    out.push({ x0: p.x - s[0], z0: p.z - s[1], x1: p.x + s[0], z1: p.z + s[1] });
+  }
+  return out;
+}
 
 const landmarkByBlock = new Map(LANDMARKS.map((l) => [`${l.block[0]},${l.block[1]}`, l]));
 export const landmarkAt = (i, j) => landmarkByBlock.get(`${i},${j}`) || null;
@@ -41,11 +60,11 @@ export const landmarkAt = (i, j) => landmarkByBlock.get(`${i},${j}`) || null;
 export const PLACES = {};
 for (const l of LANDMARKS) {
   const { x, z } = blockToWorld(l.block[0], l.block[1]);
-  PLACES[l.id] = { id: l.id, name: l.name, kind: l.kind, x, z, size: l.kind === 'plaza' || l.kind === 'park' ? PITCH : 0 };
+  PLACES[l.id] = { id: l.id, name: l.name, kind: l.kind, x, z, size: (l.kind === 'plaza' || l.kind === 'park' || l.kind === 'plaza2') ? PITCH : 0 };
 }
 
 // Where an NPC stands when "at" a place (in front of the building, not inside).
-const SPOT_OFFSETS = { plaza: [0, 0], cafe: [0, 9], church: [0, 9], market: [0, -11], park: [0, 0], bar: [0, 8], bakery: [0, 8], busstop: [0, 7], gas: [0, 11] };
+const SPOT_OFFSETS = { plaza: [0, 0], cafe: [0, 9], church: [0, 9], market: [0, -11], park: [0, 0], bar: [0, 8], bakery: [0, 8], busstop: [0, 7], gas: [0, 11], townhall: [0, 8], school: [0, 10], plaza2: [0, 0] };
 for (const id of Object.keys(PLACES)) {
   const [dx, dz] = SPOT_OFFSETS[id] || [0, 0];
   PLACES[id].spot = { x: PLACES[id].x + dx, z: PLACES[id].z + dz };
@@ -141,6 +160,10 @@ export const BENCHES = {
     const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
     return { x: Math.cos(a) * 6.5, z: Math.sin(a) * 6.5 };
   }),
+  plaza2: [0, 1, 2, 3].map((k) => {
+    const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
+    return { x: PLACES.plaza2.x + Math.cos(a) * 6.5, z: PLACES.plaza2.z + Math.sin(a) * 6.5 };
+  }),
   park: [{ x: PLACES.park.x + 5, z: PLACES.park.z - 6 }],
 };
 
@@ -160,6 +183,7 @@ export const STATIONS = {
     { id: 'shelvesB', task: 'restock', off: [8, -7] },
     { id: 'counter', task: 'serve', off: [0, 11] },
     { id: 'storage', task: 'organize', off: [0, -14] },
+    { id: 'parking', task: 'clean', off: [-6, -16] },
   ],
 };
 export function stationWorld(placeId, st) {
@@ -171,7 +195,7 @@ export function stationWorld(placeId, st) {
 export function randomSpotIn(placeId, rng) {
   const p = PLACES[placeId];
   if (!p) return { x: 0, z: 0 };
-  if (p.kind === 'plaza' || p.kind === 'park') {
+  if (p.kind === 'plaza' || p.kind === 'park' || p.kind === 'plaza2') {
     const r = p.size / 2 - 4;
     return { x: p.x + (rng() * 2 - 1) * r, z: p.z + (rng() * 2 - 1) * r };
   }

@@ -20,7 +20,7 @@ export function createWorkUi() {
       <div class="work-title">${t(L, 'work.bar')} ${s.placeName}</div>
       <div class="work-task ${s.near ? 'near' : ''}">${prompt}</div>
       <div class="bar big"><div style="width:${Math.round(s.progress * 100)}%"></div></div>
-      <div class="work-meta">${Math.round(s.money)} ${t(L, 'work.money')} · ${t(L, 'panel.approval')}: ${Math.round(s.approval)}%</div>
+      <div class="work-meta">${Math.round(s.money)} ${t(L, 'work.money')} · ${t(L, 'panel.approval')}: ${Math.round(s.approval)}% · ${s.salary ?? ''}${s.salary != null ? t(L, 'work.salary') : ''}</div>
     `;
     root.classList.remove('hidden');
   }

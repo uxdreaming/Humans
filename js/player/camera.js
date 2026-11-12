@@ -7,16 +7,10 @@
 
 import * as THREE from 'three';
 import { PITCH } from '../core/config.js';
-import { HALF_X, HALF_Z, PLACES, lotsOf, worldToBlock } from '../world/layout.js';
+import { HALF_X, HALF_Z, lotsOf, worldToBlock, landmarkRects } from '../world/layout.js';
 
-// collision rectangles of the landmark buildings (world coords)
-const LANDMARK_RECTS = [
-  { x0: -32 - 7.5, z0: 32 - 5.5, x1: -32 + 7.5, z1: 32 + 5.5 },  // café
-  { x0: 64 - 6.5, z0: -8.5, x1: 64 + 6.5, z1: 10.5 },               // church
-  { x0: 96 - 12.5, z0: -32 - 7.5, x1: 96 + 12.5, z1: -32 + 7.5 },  // market
-  { x0: -64 - 5.5, z0: 32 - 4.5, x1: -64 + 5.5, z1: 32 + 4.5 },    // bar
-  { x0: 32 - 6.5, z0: -32 - 5, x1: 32 + 6.5, z1: -32 + 5 },        // bakery
-];
+// collision rectangles of the landmark buildings (computed from the layout)
+const LANDMARK_RECTS = landmarkRects();
 
 function pushOut(pos, r, x0, z0, x1, z1) {
   if (pos.x > x0 - r && pos.x < x1 + r && pos.z > z0 - r && pos.z < z1 + r) {

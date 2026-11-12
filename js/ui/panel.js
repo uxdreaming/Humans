@@ -3,6 +3,7 @@
 // (Follow / Take control).
 
 import { t } from '../core/i18n.js';
+import { UNLOCKS } from '../core/unlocks.js';
 
 export function createPanel(cb) {
   const root = document.getElementById('panel');
@@ -13,6 +14,7 @@ export function createPanel(cb) {
   let following = false;
   let controlling = false;
   let ws = null;        // WorkState of the selected NPC (if any)
+  let unlocked = new Set();
 
   function row(k, v, f) {
     return `<div class="row"><span class="k">${k}</span><span class="v" ${f ? `data-f="${f}"` : ''}>${v}</span></div>`;
@@ -50,6 +52,8 @@ export function createPanel(cb) {
       <ul>${goals}</ul>
       <h3>${p.relationships}</h3>
       <ul>${rels}</ul>
+      <h3>${p.achievements}</h3>
+      <ul>${UNLOCKS.map((u) => `<li>${unlocked.has(u.id) ? '✅' : '🔒'} ${u.icon} ${t(L, `unlocks.${u.id}.name`)}</li>`).join('')}</ul>
       <div class="actions">
         <button id="pn-follow">${following ? p.unfollow : p.follow}</button>
         <button id="pn-take" class="secondary">${controlling ? t(L, 'control.release') : t(L, 'control.take')}</button>
@@ -106,6 +110,7 @@ export function createPanel(cb) {
     setFollowing(v) { following = v; if (current) render(); },
     setControlling(v) { controlling = v; if (current) render(); },
     setWorkState(w) { ws = w; },
+    setUnlocks(s) { unlocked = s; if (current) render(); },
     update() { updateDynamic(); },
     hide() { current = null; root.classList.add('hidden'); },
     get current() { return current; },

@@ -6,7 +6,7 @@
 
 import { scheduleEntryAt } from './data.js';
 
-const SALARY = { market: 8, cafe: 10, bar: 9 };
+const SALARY = { market: 8, cafe: 10, bar: 9, school: 9, townhall: 12 };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 export class WorkState {
@@ -17,6 +17,7 @@ export class WorkState {
     this.lateCount = 0;
     this.tasksDone = 0;
     this.salaryPerHour = SALARY[def.workPlace] || 8;
+    this.salaryMult = 1; // raised by the 'promotion' unlock
     this._shiftKey = null;
     this._lateChecked = false;
     this._workedMin = 0;
@@ -71,7 +72,7 @@ export function workUpdate(ws, gameMinutes, atWorkPlace, dtMin) {
   }
 
   if (!isWork && ws._shiftKey !== null && ws._workedMin > 0) {
-    const pay = Math.round((ws._workedMin / 60) * ws.salaryPerHour * 100) / 100;
+    const pay = Math.round((ws._workedMin / 60) * ws.salaryPerHour * (ws.salaryMult || 1) * 100) / 100;
     ws.money += pay;
     events.push({ type: 'paid', amount: pay });
     ws._workedMin = 0;

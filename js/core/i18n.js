@@ -34,7 +34,8 @@ export const STR = {
     work: {
       bar: 'Turno en',
       prompt: 'Pulsa E',
-      tasks: { restock: 'Reponer estantes', serve: 'Atender cliente', organize: 'Organizar almacén' },
+      tasks: { restock: 'Reponer estantes', serve: 'Atender cliente', organize: 'Organizar almacén', clean: 'Limpiar la zona' },
+      salary: '€/h',
       shiftStart: 'Empieza tu turno en',
       onTime: 'Llegaste puntual 👍',
       late: 'Llegaste tarde: el jefe lo ha notado ⚠️',
@@ -60,6 +61,7 @@ export const STR = {
       noSelection: 'Selecciona un NPC',
       money: 'Dinero',
       approval: 'Aprobación del jefe',
+      achievements: 'Logros',
     },
     needs: { hunger: 'Hambre', energy: 'Energía', social: 'Social' },
     activities: {
@@ -72,7 +74,17 @@ export const STR = {
       cashier: 'Cajera del supermercado', retired: 'Jubilado', student: 'Estudiante',
       baker: 'Panadera', villager: 'Vecino/a',
       stocker: 'Reponedor/a del supermercado', barkeep: 'Camarero/a del bar',
-      nightowl: 'Búho nocturno',
+      nightowl: 'Búho nocturno', teacher: 'Profesora', mayor: 'Alcalde',
+    },
+    unlocks: {
+      promotion: { name: 'Promoción', desc: 'Tu salario sube un 50%' },
+      car_discount: { name: 'Descuento en coches', desc: 'Los coches cuestan un 30% menos' },
+      bus_pass: { name: 'Pase de autobús', desc: 'Pulsa E en la parada para viajar a la plaza por 2€' },
+    },
+    bus: {
+      travel: 'Viajas a la plaza (-2€)',
+      needPass: 'Necesitas el pase de autobús (logro con 100€)',
+      prompt: 'E — Autobús a la plaza (2€)',
     },
     traits: {
       friendly: 'amable', shy: 'tímido/a', grumpy: 'gruñón/a', curious: 'curioso/a',
@@ -92,6 +104,7 @@ export const STR = {
       home: 'Su casa', plaza: 'Plaza Mayor', cafe: 'Café La Esquina',
       market: 'Supermercado El Centro', park: 'Parque del Nogal', church: 'Iglesia de Santa Vera',
       bar: 'Bar El Faro', bakery: 'Panadería La Espiga', busstop: 'Parada de autobús', gas: 'Gasolinera',
+      townhall: 'Ayuntamiento', school: 'Escuela', plaza2: 'Plaza del Mercado',
     },
     drive: {
       buy: 'E — Comprar coche',
@@ -135,7 +148,8 @@ export const STR = {
     work: {
       bar: 'Shift at',
       prompt: 'Press E',
-      tasks: { restock: 'Restock shelves', serve: 'Serve customer', organize: 'Organize storage' },
+      tasks: { restock: 'Restock shelves', serve: 'Serve customer', organize: 'Organize storage', clean: 'Clean the area' },
+      salary: '€/h',
       shiftStart: 'Your shift starts at',
       onTime: 'You arrived on time 👍',
       late: 'You are late: the boss noticed ⚠️',
@@ -161,6 +175,7 @@ export const STR = {
       noSelection: 'Select an NPC',
       money: 'Money',
       approval: 'Boss approval',
+      achievements: 'Achievements',
     },
     needs: { hunger: 'Hunger', energy: 'Energy', social: 'Social' },
     activities: {
@@ -173,7 +188,17 @@ export const STR = {
       cashier: 'Supermarket cashier', retired: 'Retired', student: 'Student',
       baker: 'Baker', villager: 'Villager',
       stocker: 'Supermarket stocker', barkeep: 'Barkeep',
-      nightowl: 'Night owl',
+      nightowl: 'Night owl', teacher: 'Teacher', mayor: 'Mayor',
+    },
+    unlocks: {
+      promotion: { name: 'Promotion', desc: 'Your salary goes up 50%' },
+      car_discount: { name: 'Car discount', desc: 'Cars cost 30% less' },
+      bus_pass: { name: 'Bus pass', desc: 'Press E at the bus stop to travel to the plaza for 2€' },
+    },
+    bus: {
+      travel: 'You travel to the plaza (-2€)',
+      needPass: 'You need the bus pass (achievement at 100€)',
+      prompt: 'E — Bus to the plaza (2€)',
     },
     traits: {
       friendly: 'friendly', shy: 'shy', grumpy: 'grumpy', curious: 'curious',
@@ -193,6 +218,7 @@ export const STR = {
       home: 'Home', plaza: 'Main Plaza', cafe: 'La Esquina Café',
       market: 'El Centro Supermarket', park: 'Nogal Park', church: 'Santa Vera Church',
       bar: 'El Faro Bar', bakery: 'La Espiga Bakery', busstop: 'Bus stop', gas: 'Gas station',
+      townhall: 'Town Hall', school: 'School', plaza2: 'Market Square',
     },
     drive: {
       buy: 'E — Buy car',

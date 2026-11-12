@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { CONFIG, PITCH } from '../core/config.js';
 import { rngFor, pick, chance } from '../core/rng.js';
 import {
-  inTown, blockToWorld, landmarkAt, lotsOf, streetCoord, BILLBOARDS, PLACES, HALF_X, HALF_Z, STATIONS, stationWorld,
+  inTown, blockToWorld, landmarkAt, lotsOf, streetCoord, streetNameAt, BILLBOARDS, PLACES, HALF_X, HALF_Z, STATIONS, stationWorld,
 } from './layout.js';
 import { makeTextTexture } from './textures.js';
 import { buildCarMesh, headlightMat, taillightMat } from './cars.js';
@@ -63,6 +63,33 @@ export class Town {
     this.lampMat = new THREE.MeshStandardMaterial({ color: 0x555a60, emissive: 0xffd9a0, emissiveIntensity: 0, roughness: 0.4 });
     this.windowMat = new THREE.MeshStandardMaterial({ color: 0x2a3550, emissive: 0xffe6a8, emissiveIntensity: 0, roughness: 0.3 });
     this.texCache = new Map();
+    this._t = 0;
+
+    // distant hills ring (skyline so the world is not flat)
+    const hillMat = new THREE.MeshStandardMaterial({ color: 0x39543f, roughness: 1, flatShading: true });
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      const r = 2300 + (i % 3) * 250;
+      const hill = new THREE.Mesh(new THREE.ConeGeometry(320 + ((i * 53) % 200), 150 + ((i * 37) % 160), 7), hillMat);
+      hill.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+      scene.add(hill);
+    }
+
+    // birds circling the main plaza
+    this.birds = [];
+    const birdMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 1 });
+    for (let i = 0; i < 6; i++) {
+      const b = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.12, 0.12), birdMat);
+      const wl = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.02, 0.22), birdMat);
+      const wr = wl.clone();
+      wl.position.x = -0.45; wr.position.x = 0.45;
+      wl.rotation.z = 0.35; wr.rotation.z = -0.35;
+      b.add(body, wl, wr);
+      b.userData = { off: i * 1.1, wl, wr };
+      scene.add(b);
+      this.birds.push(b);
+    }
 
     // real point lights at key places so nights are readable
     this.nightLights = [];
@@ -85,9 +112,18 @@ export class Town {
     for (const l of this.nightLights) l.intensity = nightFactor * 60;
   }
 
-  // per-frame world animation (fountain water, etc.)
+  // per-frame world animation (fountain water, birds)
   animate(dt) {
     if (this.fountainWater) this.fountainWater.rotation.y += dt * 0.6;
+    this._t += dt;
+    for (const b of this.birds) {
+      const a = this._t * 0.45 + b.userData.off;
+      b.position.set(Math.cos(a) * 18, 13 + Math.sin(this._t * 1.3 + b.userData.off) * 2.5, Math.sin(a) * 18);
+      b.rotation.y = -a;
+      const flap = Math.sin(this._t * 9 + b.userData.off) * 0.6;
+      b.userData.wl.rotation.z = 0.35 + flap;
+      b.userData.wr.rotation.z = -0.35 - flap;
+    }
   }
 
   update(camX, camZ) {
@@ -265,11 +301,34 @@ export class Town {
     const dashMesh = this.instanced(shared.dashGeo, shared.dashMat, dashes);
     if (dashMesh) { dashMesh.castShadow = false; dashMesh.receiveShadow = true; group.add(dashMesh); }
 
-    // zebra crossings at the central intersections (|i|,|j| <= 2)
+    // street-name signs at central intersections
+    for (let i = i0 - 1; i <= i0 + CH; i++) {
+      for (let j = j0 - 1; j <= j0 + CH; j++) {
+        if (Math.abs(i) > 4 || Math.abs(j) > 4 || (i + j) % 2 !== 0) continue;
+        const x = streetCoord(i * PITCH), z = streetCoord(j * PITCH);
+        if (x < x0 || x > x0 + span || z < z0 || z > z0 + span) continue;
+        const name = streetNameAt('z', z);
+        let tex = this.texCache.get('sign:' + name);
+        if (!tex) {
+          tex = makeTextTexture(name, { bg: '#1d4e89', fg: '#ffffff', font: 30, w: 512, h: 96 });
+          this.texCache.set('sign:' + name, tex);
+        }
+        const px = x + CONFIG.streetWidth / 2 + 0.6, pz = z - CONFIG.streetWidth / 2 - 0.6;
+        const pole = new THREE.Mesh(shared.poleGeo, shared.poleMat);
+        pole.position.set(px, 1.6, pz);
+        pole.scale.set(0.7, 0.75, 0.7);
+        const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.45), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 }));
+        sign.position.set(px, 3.2, pz);
+        sign.rotation.y = Math.PI / 2;
+        group.add(pole, sign);
+      }
+    }
+
+    // zebra crossings at the central intersections (|i|,|j| <= 3)
     const zebra = [];
     for (let i = i0 - 1; i <= i0 + CH; i++) {
       for (let j = j0 - 1; j <= j0 + CH; j++) {
-        if (Math.abs(i) > 2 || Math.abs(j) > 2) continue;
+        if (Math.abs(i) > 3 || Math.abs(j) > 3) continue;
         const x = streetCoord(i * PITCH), z = streetCoord(j * PITCH);
         if (x < x0 || x > x0 + span || z < z0 || z > z0 + span) continue;
         for (let k = 0; k < 5; k++) {
@@ -845,6 +904,76 @@ export class Town {
       win.position.set(wx, 1.8, -1.45);
       g.add(win);
     }
+    g.position.set(x, 0, z);
+    return g;
+  }
+
+  buildTownHall(x, z) {
+    const g = new THREE.Group();
+    const wall = new THREE.MeshStandardMaterial({ color: 0xe8e0d0, roughness: 0.85 });
+    const box = new THREE.Mesh(new THREE.BoxGeometry(15, 8, 12), wall);
+    box.position.y = 4; box.castShadow = true; box.receiveShadow = true;
+    g.add(box);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(10.6, 3, 4), new THREE.MeshStandardMaterial({ color: 0x4a5a6e, roughness: 0.8 }));
+    roof.position.y = 9.5; roof.rotation.y = Math.PI / 4; roof.scale.set(1, 1, 0.85); roof.castShadow = true;
+    g.add(roof);
+    const tower = new THREE.Mesh(new THREE.BoxGeometry(4, 11, 4), wall);
+    tower.position.set(0, 5.5, 7.5); tower.castShadow = true;
+    g.add(tower);
+    const towerRoof = new THREE.Mesh(new THREE.ConeGeometry(3.2, 2.6, 4), new THREE.MeshStandardMaterial({ color: 0x4a5a6e }));
+    towerRoof.position.set(0, 12.3, 7.5); towerRoof.rotation.y = Math.PI / 4; towerRoof.castShadow = true;
+    g.add(towerRoof);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(8, 1.5),
+      new THREE.MeshStandardMaterial({ map: makeTextTexture('AYUNTAMIENTO', { bg: '#1d4e89', fg: '#ffffff', font: 42 }) }));
+    sign.position.set(0, 6.6, 6.06);
+    g.add(sign);
+    for (const wx of [-4.5, 0, 4.5]) {
+      const win = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2), this.windowMat);
+      win.position.set(wx, 3.2, 6.06);
+      g.add(win);
+    }
+    const door = new THREE.Mesh(new THREE.PlaneGeometry(2, 3.2), new THREE.MeshStandardMaterial({ color: 0x4a2f1d }));
+    door.position.set(0, 1.6, 6.05);
+    g.add(door);
+    g.position.set(x, 0, z);
+    return g;
+  }
+
+  buildSchool(x, z) {
+    const g = new THREE.Group();
+    const box = new THREE.Mesh(new THREE.BoxGeometry(18, 6, 12), new THREE.MeshStandardMaterial({ color: 0xc98f7a, roughness: 0.9 }));
+    box.position.y = 3; box.castShadow = true; box.receiveShadow = true;
+    g.add(box);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(19, 0.5, 13), new THREE.MeshStandardMaterial({ color: 0x8a4b3a, roughness: 0.8 }));
+    roof.position.y = 6.25; roof.castShadow = true;
+    g.add(roof);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(8, 1.5),
+      new THREE.MeshStandardMaterial({ map: makeTextTexture('ESCUELA', { bg: '#2e7d4f', fg: '#ffffff', font: 46 }) }));
+    sign.position.set(0, 5, 6.06);
+    g.add(sign);
+    for (let k = -3; k <= 3; k++) {
+      const win = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.8), this.windowMat);
+      win.position.set(k * 2.4, 3.2, 6.06);
+      g.add(win);
+    }
+    const door = new THREE.Mesh(new THREE.PlaneGeometry(2, 3), new THREE.MeshStandardMaterial({ color: 0x2e4a6e }));
+    door.position.set(0, 1.5, 6.05);
+    g.add(door);
+    // playground: swing frame + slide in front
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x8a8f98, roughness: 0.6, metalness: 0.3 });
+    const postGeo = new THREE.BoxGeometry(0.15, 2.4, 0.15);
+    for (const [px, pz] of [[-2.5, 8.5], [2.5, 8.5], [-2.5, 11], [2.5, 11]]) {
+      const post = new THREE.Mesh(postGeo, frameMat);
+      post.position.set(px, 1.2, pz);
+      post.castShadow = true;
+      g.add(post);
+    }
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(5, 0.12, 0.12), frameMat);
+    bar.position.set(0, 2.3, 9.75);
+    g.add(bar);
+    const swing = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.4, 0.05), new THREE.MeshStandardMaterial({ color: 0xc0504d }));
+    swing.position.set(-1, 1.6, 9.75);
+    g.add(swing);
     g.position.set(x, 0, z);
     return g;
   }

@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { NPC_DEFS, scheduleEntryAt } from '../js/npc/data.js';
 import { WorkState, workUpdate, completeTask, isWorkNow } from '../js/npc/work.js';
+import { UNLOCKS, newlyUnlocked } from '../js/core/unlocks.js';
 
 const manager = NPC_DEFS.find((d) => d.occupation === 'market_manager');
 assert.ok(manager && manager.workPlace === 'market');
@@ -69,6 +70,32 @@ assert.ok(manager && manager.workPlace === 'market');
   assert.ok(events.some((e) => e.type === 'abandon'), 'abandon event after 10 min away');
   assert.ok(events.some((e) => e.type === 'late'), 'late event too');
   assert.equal(ws.approval, 60 - 10 - 15, 'abandon -10 and late -15');
+}
+
+// --- unlocks fire once, from approval / tasks / money ---
+{
+  const ws = new WorkState(manager);
+  assert.deepEqual(newlyUnlocked(ws, new Set()), []);
+  ws.approval = 80;
+  assert.deepEqual(newlyUnlocked(ws, new Set()), ['promotion']);
+  const seen = new Set(['promotion']);
+  ws.tasksDone = 15;
+  assert.deepEqual(newlyUnlocked(ws, seen), ['car_discount']);
+  seen.add('car_discount');
+  ws.money = 100;
+  assert.deepEqual(newlyUnlocked(ws, seen), ['bus_pass']);
+  assert.equal(UNLOCKS.length, 3);
+}
+
+// --- promotion raises salary ---
+{
+  const ws = new WorkState(manager);
+  ws.salaryMult = 1.5;
+  let events = [];
+  for (let m = 8 * 60; m < 9 * 60; m++) events = events.concat(workUpdate(ws, m, true, 1));
+  events = events.concat(workUpdate(ws, 9 * 60, false, 1)); // lunch -> paid
+  const paid = events.find((e) => e.type === 'paid');
+  assert.ok(Math.abs(paid.amount - 8 * 1.5) < 0.01, `promoted pay = 12 (got ${paid.amount})`);
 }
 
 console.log('✔ all work tests passed');
