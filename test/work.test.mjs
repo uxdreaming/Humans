@@ -88,15 +88,16 @@ assert.ok(manager && manager.workPlace === 'market');
   assert.equal(UNLOCKS.length, 3);
 }
 
-// --- promotion raises salary ---
+// --- promotion raises salary (4h shift 08:00-12:00 at 8EUR/h x1.5 = 48) ---
 {
   const ws = new WorkState(manager);
   ws.salaryMult = 1.5;
   let events = [];
-  for (let m = 8 * 60; m < 9 * 60; m++) events = events.concat(workUpdate(ws, m, true, 1));
-  events = events.concat(workUpdate(ws, 9 * 60, false, 1)); // lunch -> paid
+  for (let m = 8 * 60; m < 12 * 60; m++) events = events.concat(workUpdate(ws, m, true, 1));
+  events = events.concat(workUpdate(ws, 12 * 60, false, 1)); // lunch starts -> paid
   const paid = events.find((e) => e.type === 'paid');
-  assert.ok(Math.abs(paid.amount - 8 * 1.5) < 0.01, `promoted pay = 12 (got ${paid.amount})`);
+  assert.ok(paid, 'paid event at lunch');
+  assert.ok(Math.abs(paid.amount - 4 * 8 * 1.5) < 0.01, `promoted pay = 48 (got ${paid.amount})`);
 }
 
 console.log('✔ all work tests passed');
