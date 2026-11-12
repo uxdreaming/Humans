@@ -18,7 +18,7 @@ export const STR = {
     fullscreen: 'Pantalla completa',
     exitFullscreen: 'Salir de pantalla completa',
     langBtn: 'EN',
-    hint: 'Clic en un NPC para inspeccionarlo · N: NPC más cercano · F seguir · Esc cancelar · WASD moverse · arrastrar: órbita · rueda: zoom',
+    hint: 'Clic en un NPC para inspeccionarlo · N: NPC más cercano · F seguir · Esc cancelar · WASD moverse · arrastrar: órbita · rueda: zoom · al controlar: E hablar/entrar/coche/trabajo · V primera persona',
     controlling: 'Controlando a',
     control: {
       take: 'Tomar control',
@@ -62,6 +62,7 @@ export const STR = {
       money: 'Dinero',
       approval: 'Aprobación del jefe',
       achievements: 'Logros',
+      talk: '💬 Hablar',
     },
     needs: { hunger: 'Hambre', energy: 'Energía', social: 'Social' },
     activities: {
@@ -106,6 +107,19 @@ export const STR = {
       bar: 'Bar El Faro', bakery: 'Panadería La Espiga', busstop: 'Parada de autobús', gas: 'Gasolinera',
       townhall: 'Ayuntamiento', school: 'Escuela', plaza2: 'Plaza del Mercado',
     },
+    chat: {
+      with: 'Conversación con',
+      listening: 'escuchando',
+      mic: 'Micrófono (hablar por voz)',
+      micUnavailable: 'Este navegador no soporta el micrófono: escribe con el teclado',
+      ph: 'Escribe algo… o usa el micrófono',
+      talkPrompt: 'E — Hablar con {name}',
+    },
+    enter: {
+      enter: 'E — Entrar',
+      exit: 'E — Salir',
+      inside: 'Entras en',
+    },
     drive: {
       buy: 'E — Comprar coche',
       enter: 'E — Subirse al coche',
@@ -132,7 +146,7 @@ export const STR = {
     fullscreen: 'Fullscreen',
     exitFullscreen: 'Exit fullscreen',
     langBtn: 'ES',
-    hint: 'Click an NPC to inspect · N: nearest NPC · F follow · Esc cancel · WASD move · drag: orbit · wheel: zoom · V first person when controlling',
+    hint: 'Click an NPC to inspect · N: nearest NPC · F follow · Esc cancel · WASD move · drag: orbit · wheel: zoom · when controlling: E talk/enter/car/work · V first person',
     controlling: 'Controlling',
     control: {
       take: 'Take control',
@@ -176,6 +190,7 @@ export const STR = {
       money: 'Money',
       approval: 'Boss approval',
       achievements: 'Achievements',
+      talk: '💬 Talk',
     },
     needs: { hunger: 'Hunger', energy: 'Energy', social: 'Social' },
     activities: {
@@ -219,6 +234,19 @@ export const STR = {
       market: 'El Centro Supermarket', park: 'Nogal Park', church: 'Santa Vera Church',
       bar: 'El Faro Bar', bakery: 'La Espiga Bakery', busstop: 'Bus stop', gas: 'Gas station',
       townhall: 'Town Hall', school: 'School', plaza2: 'Market Square',
+    },
+    chat: {
+      with: 'Chat with',
+      listening: 'listening',
+      mic: 'Microphone (speak out loud)',
+      micUnavailable: 'This browser has no microphone support: type instead',
+      ph: 'Type something… or use the mic',
+      talkPrompt: 'E — Talk to {name}',
+    },
+    enter: {
+      enter: 'E — Enter',
+      exit: 'E — Exit',
+      inside: 'You enter',
     },
     drive: {
       buy: 'E — Buy car',

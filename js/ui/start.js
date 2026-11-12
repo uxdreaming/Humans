@@ -37,7 +37,8 @@ export function createStartScreen(cb) {
         <div class="nc-traits">${d.traits.map((tr) => `<span class="tag">${t(lang, `traits.${tr}`)}</span>`).join('')}</div>
         <button class="nc-play">${t(lang, 'start.playAs')} ${d.name.split(' ')[0]}</button>
       `;
-      card.querySelector('.nc-play').addEventListener('click', () => cb.onPick(a));
+      card.querySelector('.nc-play').addEventListener('click', (e) => { e.stopPropagation(); cb.onPick(a); });
+      card.addEventListener('click', () => cb.onPick(a)); // whole card is clickable
       list.appendChild(card);
     }
     if (!list.children.length) {
@@ -46,6 +47,12 @@ export function createStartScreen(cb) {
   }
 
   search.addEventListener('input', render);
+  search.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const first = list.querySelector('.npc-card');
+      if (first) first.click();
+    }
+  });
   document.getElementById('start-observe').addEventListener('click', () => cb.onObserve());
 
   return {

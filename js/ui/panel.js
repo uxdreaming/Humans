@@ -57,11 +57,14 @@ export function createPanel(cb) {
       <div class="actions">
         <button id="pn-follow">${following ? p.unfollow : p.follow}</button>
         <button id="pn-take" class="secondary">${controlling ? t(L, 'control.release') : t(L, 'control.take')}</button>
+        ${controlling ? `<button id="pn-talk" class="secondary">${p.talk}</button>` : ''}
       </div>
     `;
     root.querySelector('#pn-close').addEventListener('click', () => cb.onClose());
     root.querySelector('#pn-follow').addEventListener('click', () => { following = !following; cb.onFollowToggle(current); render(); });
     root.querySelector('#pn-take').addEventListener('click', () => cb.onTakeControl(current));
+    const talkBtn = root.querySelector('#pn-talk');
+    if (talkBtn) talkBtn.addEventListener('click', () => cb.onTalk && cb.onTalk(current));
     root.classList.remove('hidden');
     renderNeeds();
     updateDynamic();

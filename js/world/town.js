@@ -9,8 +9,16 @@ import { rngFor, pick, chance } from '../core/rng.js';
 import {
   inTown, blockToWorld, landmarkAt, lotsOf, streetCoord, streetNameAt, BILLBOARDS, PLACES, HALF_X, HALF_Z, STATIONS, stationWorld,
 } from './layout.js';
-import { makeTextTexture } from './textures.js';
+import { makeTextTexture, makeNoiseTexture } from './textures.js';
 import { buildCarMesh, headlightMat, taillightMat } from './cars.js';
+
+// procedural ground surfaces (shared; repeat is set per use)
+const TEX = {
+  grass: makeNoiseTexture({ base: '#5d8a4a', vary: 26, blotches: 40, blotchColor: '#3f6b33', blotchAlpha: 0.12 }),
+  asphalt: makeNoiseTexture({ base: '#3a3f46', vary: 14, blotches: 24, blotchColor: '#2c3036', blotchAlpha: 0.25 }),
+  concrete: makeNoiseTexture({ base: '#b9b3a6', vary: 12, blotches: 18, blotchColor: '#a39d90', blotchAlpha: 0.2 }),
+  plaster: makeNoiseTexture({ base: '#ffffff', vary: 10 }),
+};
 
 // Shared (never disposed) assets -------------------------------------------------
 const shared = {
@@ -23,8 +31,8 @@ const shared = {
   sidewalkGeo: new THREE.PlaneGeometry(CONFIG.blockSize, CONFIG.blockSize),
   roadGeoV: new THREE.PlaneGeometry(CONFIG.streetWidth, CONFIG.chunkBlocks * PITCH + CONFIG.streetWidth),
   roadGeoH: new THREE.PlaneGeometry(CONFIG.chunkBlocks * PITCH + CONFIG.streetWidth, CONFIG.streetWidth),
-  sidewalkMat: new THREE.MeshStandardMaterial({ color: 0xb9b3a6, roughness: 1 }),
-  roadMat: new THREE.MeshStandardMaterial({ color: 0x3a3f46, roughness: 0.95 }),
+  sidewalkMat: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, map: TEX.concrete }),
+  roadMat: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, map: TEX.asphalt }),
   trunkMat: new THREE.MeshStandardMaterial({ color: 0x6b4a2f, roughness: 1 }),
   foliageMat: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }),
   poleMat: new THREE.MeshStandardMaterial({ color: 0x2e3238, roughness: 0.6, metalness: 0.4 }),
@@ -186,10 +194,13 @@ export class Town {
     const mx = x0 + span / 2, mz = z0 + span / 2;
     const rng = rngFor(CONFIG.seed, 'chunk', cx, cz);
 
-    const grass = new THREE.Color(0x5d8a4a).offsetHSL(0, 0, (rng() - 0.5) * 0.06);
+    const grassTex = TEX.grass.clone();
+    grassTex.needsUpdate = true;
+    grassTex.repeat.set(span / 9, span / 9);
+    const grassTint = new THREE.Color(0xffffff).offsetHSL(0, 0, (rng() - 0.5) * 0.08);
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(span, span),
-      new THREE.MeshStandardMaterial({ color: grass, roughness: 1 }),
+      new THREE.MeshStandardMaterial({ color: grassTint, roughness: 1, map: grassTex }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(mx, 0, mz);
@@ -360,7 +371,7 @@ export class Town {
       }
     }
 
-    const walls = this.instanced(shared.wallGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }),
+    const walls = this.instanced(shared.wallGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, map: TEX.plaster }),
       houses.map((h) => ({ pos: [h.x, h.h / 2, h.z], rotY: h.rotY, scale: [h.w, h.h, h.d], color: h.wall })));
     if (walls) group.add(walls);
     const roofs = this.instanced(shared.roofGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 }),

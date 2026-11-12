@@ -36,31 +36,45 @@ affect later lives.
 
   ```
   index.html            entry page + importmap (three -> vendor/three/three.module.js)
-  css/style.css         HUD, panel and boot screen styles
+  css/style.css         HUD, panel, chat, boot screen styles
   package.json          ES modules + scripts (serve / test), no dependencies
+  serve.py / play.sh / stop.sh / HUMANS.desktop   dev server + double-click launchers
   js/
-    main.js             entry point and game loop
+    main.js             entry point, game loop, interaction wiring (E key), self-test hooks
     core/
-      config.js         all tuning constants (world seed, 30x50 blocks, time scale...)
+      config.js         all tuning constants (world seed, 60x80 blocks, time scale...)
       rng.js            seeded deterministic RNG
       names.js          procedural name generator (people, streets, ads, cities)
       i18n.js           UI strings, Spanish (default) + English
+      unlocks.js        achievement/unlock definitions and checks
     world/
-      layout.js         pure world layout: block grid, streets, landmarks, names
-      town.js           chunk-streamed 3D town (houses, roads, lamps, billboards)
-      sky.js            day/night cycle: sun, moon, stars, fog, lamp lights
+      layout.js         pure world layout: block grid, streets, landmarks, cars, stations
+      textures.js       procedural canvas textures (noise, signs, price tags)
+      town.js           chunk-streamed 3D mini-city (houses, landmarks, lamps, traffic)
+      sky.js            day/night cycle: sun, moon, stars, clouds, fog
+      cars.js           car meshes + drivable CarEntity (fuel, price)
+      interiorSpecs.js  pure enterable-room data (sizes, furniture, collision)
+      interior.js       builds the enterable rooms (one per building kind, off-map)
     npc/
       data.js           NPC definitions: identity, personality, schedule, relations
       agents.js         schedule-driven agents: movement, needs, mood (pure logic)
-      characters.js     low-poly humanoid meshes + walk/sit animation
+      work.js           work/economy state: shifts, lateness, salary, tasks (pure)
+      characters.js     low-poly humanoid meshes + walk/sit/chat poses
     player/
-      camera.js         observation camera (free orbit + follow mode)
+      camera.js         cameras: free / follow / control / drive / interior
       picking.js        click-to-select NPC raycasting
+    ai/
+      dialogue.js       rule-based contextual dialogue engine (ES/EN, local demo mode)
+      voice.js          microphone (Web Speech API) + spoken replies (speechSynthesis)
     ui/
       hud.js            top bar: clock, time controls, quality, language, fullscreen
-      panel.js          NPC inspector panel
-  test/logic.test.mjs   Node tests for the pure modules (npm test)
-  vendor/three/         vendored Three.js r160 (three.module.js + LICENSE)
+      panel.js          NPC inspector panel (follow / take control / talk)
+      start.js          start screen with searchable NPC list
+      chat.js           chat panel: text input + mic button + listening badge
+      work.js           work bar (task, progress, money, approval, salary)
+      toast.js          transient notifications
+  test/                 Node tests for the pure modules (npm test)
+  vendor/three/         vendored Three.js r160 (+ bloom postprocessing + LICENSE)
   ```
 
 - **No API keys or secrets in the client.** If an AI API is connected for conversations,
@@ -112,6 +126,16 @@ respect the NPC's personality and memories.
   listening, and can be stopped at any time. If the microphone, speech recognition, or audio
   output is unavailable, there is a functional text alternative. No feature depends on a
   single service.
+
+**Implemented in v0.6.0 (local demo mode, no external service):** press **E next to an NPC**
+(or the Talk button in its panel) while controlling a character to open the chat. Type
+freely, or press the mic button to talk with your voice — recognition only runs while the
+button is on (a red "listening" badge is shown) and the recognized text is sent as a
+message. Replies come from the rule-based engine `js/ai/dialogue.js` (greetings, mood,
+work, name, help, romance by relationship strength, insults, farewells, personality-based
+fallbacks) in ES/EN, are shown in the chat, spoken aloud via `speechSynthesis` when
+available, and their relationship deltas are applied by the game. No API keys in the
+client; an external AI backend can later be plugged into `js/ai/`.
 
 ## Work, economy, and activities
 
@@ -185,16 +209,18 @@ respect the NPC's personality and memories.
 
 ## Current status and staged plan
 
-Actual repository status: Stage 0 (docs), **Stage 1 (playable 3D village prototype)**
-and **Stage 2 (first playable life: control an NPC + supermarket job)** are implemented
-and tested; stages 3-7 are plan, not code.
+Actual repository status: Stage 0 (docs), **Stage 1 (playable 3D village prototype)**,
+**Stage 2 (first playable life: control an NPC + playable job, money, cars, unlocks)** and
+the first part of **Stage 3 (contextual conversations by text and voice + enterable
+buildings)** are implemented and tested (current build **v0.6.0**); the rest of stages
+3-7 is plan, not code.
 
 | Stage | Description | Status |
 |-------|-------------|--------|
 | 0 | Project documentation | ✅ done |
 | 1 | Visual village prototype: explorable 3D world, NPCs with routines and personalities, day/night cycle, observation mode (select/follow NPC) and character profile | ✅ done |
-| 2 | First playable life: start screen with NPC search (pick a life to play, or observe), third-person control (V = first person), game clock, playable supermarket job (restock/serve/organize with E, customer at the counter), lateness/abandonment and boss approval, money, hunger slows work | ✅ done |
-| 3 | Relationships, contacts, and memories; contextual text conversations; café scene; modular architecture for AI and voice; basic phone | ⏳ pending |
+| 2 | First playable life: start screen with NPC search (pick a life to play, or observe), third-person control (V = first person), game clock, playable job at supermarket/cafe/bar/school/town hall (4 task types with E), lateness/abandonment and boss approval, money and salary, hunger slows work; plus drivable/buyable cars with fuel and gas station, bus pass, unlock system (promotion, car discount), mini-city map 60x80 with plazas/town hall/school, bloom + procedural textures | ✅ done |
+| 3 | Relationships and memories; contextual conversations (free text + microphone voice with visible listening state, spoken replies; local rule-based demo mode, no API keys); enterable buildings/homes (interiors); relationship strength changes with what you say; café table scene; modular AI architecture; basic phone | 🟡 v0.6.0: chat + voice + interiors done; café scene and phone pending |
 | 4 | Daily life: shopping, inventory, basic economy, housing and decoration, parties, save system and offline simulation, fictional lottery | ⏳ pending |
 | 5 | Lives and persistent world: aging, death, new life, inheritable lessons, persistent consequences | ⏳ pending |
 | 6 | Travel and expansion: cities from the 2nd life, metropolises from the 4th, cars and fuel, airports, ports, new jobs and businesses | ⏳ pending |
@@ -227,8 +253,8 @@ launcher (edit the `Exec=` path if you cloned the repo somewhere other than
 "Allow launching" if asked). Opening `index.html` directly via `file://` does
 **not** work (browsers block ES modules there) — always use `play.sh` / a server.
 
-Tip: the HUD shows the build version (e.g. `HUMANS v0.3.0`) and the population
-(e.g. `40/400`) — if you ever see old numbers, hard-reload with **Ctrl+Shift+R**;
+Tip: the HUD shows the build version (e.g. `HUMANS v0.6.0`) and the population
+(e.g. `46/400`) — if you ever see old numbers, hard-reload with **Ctrl+Shift+R**;
 `serve.py` already sends `no-store` so a normal reload is enough.
 
 Any static file server works (it will also be deployable as-is on static hosting).
@@ -237,7 +263,7 @@ Requirement: a modern browser with WebGL.
 Run the logic tests (no browser needed):
 
 ```bash
-npm test               # = node test/logic.test.mjs
+npm test               # = logic + work + dialogue + interior tests (pure modules, no browser)
 ```
 
 ### Controls
@@ -257,38 +283,80 @@ Playing a life (stage 2):
 - In the NPC panel, **Take control** to play that person: **WASD** move, **Shift** run,
   **drag** orbit camera, **V** first/third person, **Esc** or **Release control** to go
   back to observation. **N** jumps to the nearest NPC.
-- If that NPC works at the supermarket and you are on shift there, a work bar appears:
-  go to a station (shelves / counter / storage) and press **E** repeatedly to do the
-  task (restock, serve, organize). Tasks pay money and raise boss approval; arriving
-  25+ min late lowers it. Salary is paid per worked hour when the shift block ends.
+- If that NPC works and you are on shift there, a work bar appears: go to a station
+  (shelves / counter / storage / cleaning zone) and press **E** repeatedly to do the
+  task (restock, serve, organize, clean). Tasks pay money and raise boss approval;
+  arriving 25+ min late lowers it. Salary is paid per worked hour when the shift ends.
+
+Talking and entering places (v0.6.0):
+- Stand next to an NPC and press **E** (or the Talk button in its panel) to open the
+  chat: type freely or use the **mic button** to speak (it only records while on; a red
+  badge shows "listening"). Replies appear in the chat and are spoken aloud when the
+  browser supports it. What you say changes the relationship: greetings and offers of
+  help raise it, insults lower it, romance only works at high relationship.
+- Stand in front of a building (cafe, supermarket, bar, bakery, church, gas station,
+  town hall, school) or a house/apartment door and press **E** to **go inside**; walk
+  with WASD and press **E** again to go out.
+- Cars: next to a parked car, **E** buys it (if you have the money) and gets you in;
+  drive with WASD, watch the fuel gauge, **E** gets you out. At the gas station press
+  **R** near your car to refuel (20€). With the bus pass unlock, **E** at the bus stop
+  travels to the plaza (2€).
 
 Top bar (always): **pause / 1x / 2x / 4x** time controls (1 game hour = 10 real
 minutes), **quality** (low/medium/high: shadows + pixel ratio), **ES/EN** language
 toggle, **fullscreen**.
 
-### Stage 1 — implemented vs. known limitations
+### Current build (v0.6.0) — implemented vs. known limitations
 
-Implemented: procedural town of 30x50 blocks (seeded, always the same town) with plaza
-and fountain, café, church, supermarket, park, bar, bakery and a bus stop; up to 4
-houses/gardens per block (bigger houses filling the lot, pyramid and gable roofs,
-chimneys, doors, windows that glow at night, fences around many lots, bushes, street
-trees), streets with zebra crossings near the centre, parked cars plus moving traffic on
-the central avenue, lamps and generated billboards; seeded name generator (people,
-streets, billboards, city list; the starting town is generated too); 27 NPCs with
-schedules, personalities, needs, moods, goals and relationships that live their routines
-on their own — including nocturnal ones that are out at night (the game starts at 10:00
-so most are already out); day/night cycle with sun, moon, stars, drifting clouds, fog,
-street lamps and real point lights at the plaza/café/market/bar at night; an inhabitant
-dropdown in the HUD that jumps the camera to any NPC, plus a pulsing marker over each
-NPC; chunk streaming so only the visible area is rendered; observation mode with select +
-follow + live inspector panel; bilingual UI (ES/EN); quality settings; fullscreen.
+Implemented: seeded procedural **mini-city of 60x80 blocks** (always the same city) with 11
+landmarks — main plaza (fountain, string lights, stalls), market square, cafe, church,
+supermarket, park, bar, bakery, bus stop, gas station, town hall and school — plus hills,
+birds, street-name signs, zebra crossings, lamps and generated billboards; up to 4
+houses/apartments/gardens per block with gable and pyramid roofs, chimneys, colored doors,
+windows that glow at night and fences; **46 NPCs** with full-day schedules (including
+nocturnal ones), personalities, needs, moods, goals and relationships, who live their
+routines on their own and chat in pairs; day/night cycle with sun, moon, stars, drifting
+clouds, fog and real point lights at night; chunk streaming around the camera; noise
+textures on ground/roads/walls, ACES tone mapping, **bloom post-processing** and a
+cinematic vignette; observation mode (click / dropdown / **N** nearest, follow with **F**,
+live inspector panel); start screen with a searchable NPC list ("Play as" starts that
+life); third-person control with acceleration-based movement (**V** = first person);
+playable work shifts at supermarket/cafe/bar/school/town hall with 4 task types, lateness
+and abandonment penalties, boss approval, per-task money and salary at shift end; an
+**unlock system** (promotion = +50% salary at approval 80+, car discount -30% after 15
+tasks, bus pass at 100€ = E at the bus stop travels to the plaza for 2€); **drivable and
+buyable cars** (150/260/420€) with fuel consumption and refueling at the gas station
+(R, 20€); **contextual conversations** in a chat panel — free text or **microphone voice**
+(explicit mic button, visible listening badge, spoken replies via TTS) answered by a
+rule-based ES/EN dialogue engine that uses mood, job, place, relationship strength and
+personality, with relationship deltas validated and applied by the game; **enterable
+interiors** for every building kind and for houses/apartments (E at the door enters, WASD
+inside, E exits) with furniture, warm lighting and collision; bilingual UI (ES/EN),
+quality settings (low/medium/high), fullscreen; dev server with no-store headers plus
+`play.sh` / `stop.sh` / `HUMANS.desktop` launchers; URL params for debugging and weak
+machines (`?q=low`, `?chunks=N`, `?selftest=1`, `?noframe=1`).
 
-Known limitations (by design, next stages): NPCs don't talk yet (Stage 3 — contextual
-conversations + café scene + phone), no saving/offline simulation yet (Stage 4 — money
-and approval are session-only for now), work tasks exist only at the supermarket,
-cars are parked/traffic only — no drivable car or travel yet (Stage 6), population is
-27 of the planned 400, and only the chunks around the camera are rendered.
+Known limitations (by design, next stages): no save/offline simulation yet (money,
+approval and relationships are session-only); the phone/contact list and the cafe table
+scene are not in yet; no shopping inventory, home decoration, parties or lottery yet;
+conversations are a local rule-based demo mode — no external AI backend yet (planned, with
+API keys only in a backend, never in the browser); no aging/death/multiple lives yet;
+travel is limited to the bus-pass hop inside the same town (other cities come with the 2nd
+life); population is 46 of the planned 400; weather and seasons are not in yet.
 
+### Economy — how long does it take to earn X?
+
+Time: 1 game hour = 10 real minutes at 1x speed (pause / 1x / 2x / 4x in the top bar).
+Salaries per worked game hour: supermarket 8€, cafe 10€, bar 9€, school 9€, town hall
+12€. Every completed task also pays +2€ instantly.
+
+Examples at the supermarket (8€/h):
+- 100€ (bus pass unlock): ~12.5 worked game hours ≈ **2 h 05 min real** at 1x.
+- 150€ (cheapest car): ~19 worked game hours ≈ **3 h 10 min real** at 1x; with the
+  promotion unlock (12€/h) it drops to ~12.5 hours ≈ **2 h 05 min real**.
+- Tasks speed this up: every 4 presses of E at a station = one task = +2€.
+- Refueling a full tank costs 20€; the bus pass hops to the plaza for 2€.
+- With the car discount unlock (15 tasks done), the cheapest car costs 105€.
 ## Deployment
 
 The long-term goal is to publish the game so other people can play it. A hosting platform

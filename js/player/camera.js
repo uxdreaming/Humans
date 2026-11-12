@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { PITCH } from '../core/config.js';
 import { HALF_X, HALF_Z, lotsOf, worldToBlock, landmarkRects } from '../world/layout.js';
+import { clampInterior, doorInsidePos } from '../world/interiorSpecs.js';
 
 // collision rectangles of the landmark buildings (computed from the layout)
 const LANDMARK_RECTS = landmarkRects();
@@ -50,9 +51,13 @@ export class ObserverCamera {
     this.yaw = Math.PI * 0.22;
     this.pitch = 0.5;
     this.dist = 34;
-    this.mode = 'free'; // free | follow | control | drive
+    this.mode = 'free'; // free | follow | control | drive | interior
     this.followAgent = null;
     this.car = null;
+    this.roomSpec = null; // interior mode: room spec + slot + local pos
+    this.roomSlot = null;
+    this.roomPos = null;
+    this.roomDoor = null; // world door pos: keeps town streaming anchored outside
     this.vel = { x: 0, z: 0 };
     this.firstPerson = false;
     this.keys = new Set();
@@ -60,6 +65,7 @@ export class ObserverCamera {
     this.baseFov = camera.fov;
 
     window.addEventListener('keydown', (e) => {
+      if (e.target && e.target.tagName === 'INPUT') return; // typing in chat: no game keys
       const k = e.key.toLowerCase();
       this.keys.add(k);
       if (k === 'f') cb.onToggleFollow();
@@ -103,10 +109,14 @@ export class ObserverCamera {
   }
 
   releaseControl() {
-    if (this.mode === 'control') this.followAgent?.group && (this.followAgent.group.visible = true);
+    if (this.mode === 'control' || this.mode === 'interior') this.followAgent?.group && (this.followAgent.group.visible = true);
     this.mode = 'free';
     this.followAgent = null;
     this.firstPerson = false;
+    this.roomSpec = null;
+    this.roomSlot = null;
+    this.roomPos = null;
+    this.roomDoor = null;
   }
 
   drive(car) {
@@ -120,6 +130,27 @@ export class ObserverCamera {
   exitDrive() {
     this.mode = 'control';
     this.car = null;
+  }
+
+  enterInterior(spec, slot, doorWorld) {
+    this.mode = 'interior';
+    this.roomSpec = spec;
+    this.roomSlot = slot;
+    this.roomDoor = doorWorld;
+    this.roomPos = doorInsidePos(spec);
+    this.yaw = 0; // face into the room (-z)
+    this.pitch = 0.3;
+    this.dist = 6;
+    this.vel = { x: 0, z: 0 };
+    this.firstPerson = false;
+  }
+
+  exitInterior() {
+    if (this.mode === 'interior') this.mode = 'control';
+    this.roomSpec = null;
+    this.roomSlot = null;
+    this.roomPos = null;
+    this.roomDoor = null;
   }
 
   toggleFollow(agent) {
@@ -141,7 +172,7 @@ export class ObserverCamera {
   }
 
   toggleFP() {
-    if (this.mode === 'control') {
+    if (this.mode === 'control' || this.mode === 'interior') {
       this.firstPerson = !this.firstPerson;
       if (this.followAgent) this.followAgent.group.visible = !this.firstPerson;
     }
@@ -178,6 +209,58 @@ export class ObserverCamera {
       );
       this.camera.position.lerp(desired, 1 - Math.exp(-dt * 7));
       this.camera.lookAt(car.pos.x + Math.sin(car.heading) * 4, 1.2, car.pos.z + Math.cos(car.heading) * 4);
+      return;
+    }
+
+    // ---- interior mode: walk inside a room, camera orbits the player ----
+    if (this.mode === 'interior' && this.roomSpec && this.roomPos) {
+      const a = this.followAgent ? this.followAgent.agent : null;
+      const running = this.keys.has('shift');
+      const maxSp = running ? 5.5 : 3.2;
+      const f = { x: -Math.sin(this.yaw), z: -Math.cos(this.yaw) };
+      const r = { x: -f.z, z: f.x };
+      let ix = 0, iz = 0;
+      if (this.keys.has('w')) { ix += f.x; iz += f.z; }
+      if (this.keys.has('s')) { ix -= f.x; iz -= f.z; }
+      if (this.keys.has('a')) { ix -= r.x; iz -= r.z; }
+      if (this.keys.has('d')) { ix += r.x; iz += r.z; }
+      const ilen = Math.hypot(ix, iz);
+      if (ilen > 0) {
+        ix /= ilen; iz /= ilen;
+        this.vel.x += ix * 30 * dt;
+        this.vel.z += iz * 30 * dt;
+      }
+      const fr = Math.exp(-(ilen > 0 ? 1.2 : 9) * dt);
+      this.vel.x *= fr; this.vel.z *= fr;
+      const sp = Math.hypot(this.vel.x, this.vel.z);
+      if (sp > maxSp) { this.vel.x *= maxSp / sp; this.vel.z *= maxSp / sp; }
+      this.roomPos.x += this.vel.x * dt;
+      this.roomPos.z += this.vel.z * dt;
+      clampInterior(this.roomPos, this.roomSpec, 0.4);
+      if (a) {
+        if (sp > 0.4) {
+          a.heading = Math.atan2(this.vel.x, this.vel.z);
+          a.moving = true;
+          a.state = 'walk';
+          a.walkPhase += dt * (4 + sp * 1.3);
+        } else {
+          a.moving = false;
+          a.state = 'idle';
+        }
+      }
+      const fx = this.roomSlot.x + this.roomPos.x;
+      const fz = this.roomSlot.z + this.roomPos.z;
+      const back = this.firstPerson ? 0.05 : this.dist;
+      const cp = Math.cos(this.pitch);
+      const desired = new THREE.Vector3(
+        fx + back * cp * Math.sin(this.yaw),
+        1.5 + back * Math.sin(this.pitch),
+        fz + back * cp * Math.cos(this.yaw),
+      );
+      this.camera.position.lerp(desired, 1 - Math.exp(-dt * 12));
+      this.camera.lookAt(fx, this.firstPerson ? 1.68 : 1.5, fz);
+      // keep world streaming anchored at the outside door
+      if (this.roomDoor) this.target.set(this.roomDoor.x, 1.5, this.roomDoor.z);
       return;
     }
 

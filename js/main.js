@@ -3,9 +3,15 @@
 // Stage 2: take control of an NPC (3rd/1st person) + playable supermarket shift.
 
 import * as THREE from 'three';
-import { CONFIG } from './core/config.js';
+import { CONFIG, PITCH } from './core/config.js';
 import { t } from './core/i18n.js';
-import { TOWN_NAME, PLACES, STATIONS, stationWorld, randomSpotIn } from './world/layout.js';
+import { rngFor } from './core/rng.js';
+import { TOWN_NAME, PLACES, STATIONS, stationWorld, randomSpotIn, lotsOf, worldToBlock, nearestStreetName } from './world/layout.js';
+import { createChat } from './ui/chat.js';
+import { respond } from './ai/dialogue.js';
+import { createVoice } from './ai/voice.js';
+import { Interiors } from './world/interior.js';
+import { ENTERABLE, INTERIOR_SPECS } from './world/interiorSpecs.js';
 import { UNLOCKS, newlyUnlocked } from './core/unlocks.js';
 import { Town, Traffic } from './world/town.js';
 import { createCars } from './world/cars.js';
@@ -106,10 +112,17 @@ const state = {
   unlocked: new Set(),
   priceMult: 1,   // car discount unlock
   busPass: false, // bus pass unlock
+  interior: null, // { kind, spec, slot, door } while inside a building
+  chatWith: null, // agent entry the chat panel is open with
 };
 
 const toast = createToasts();
 const workUi = createWorkUi();
+
+const voice = createVoice();
+const interiors = new Interiors(scene);
+// dynamic player<->NPC relationships built through conversation: `${minId}-${maxId}` -> { strength, memory }
+const chatRels = new Map();
 
 // start screen: NPC search — picking one starts the game controlling them
 // (declared before setLang/applyQuality run at the bottom of the module)
@@ -141,6 +154,7 @@ function setLang(l) {
   localStorage.setItem('humans.lang', l);
   panel.setLang(l);
   panel.setHint(l);
+  chatUi.setLang(l);
   startScreen.setLang(l);
   hud.setNpcs(agents.map((a) => ({ id: a.id, name: a.def.name })), l);
   if (state.selected) panel.show(state.selected, NPC_DEFS, l, workStates.get(state.selected.id));
@@ -182,6 +196,8 @@ function select(entry) {
 function toggleControl(entry) {
   if (!entry) return;
   if (state.controlling === entry) {
+    if (state.interior) exitInterior();
+    if (state.chatWith) closeChat();
     entry.agent.controlled = false;
     state.controlling = null;
     observer.releaseControl();
@@ -205,8 +221,150 @@ const panel = createPanel({
     panel.setFollowing(observer.mode === 'follow');
   },
   onTakeControl: (entry) => toggleControl(entry),
+  onTalk: (entry) => { if (state.controlling && entry !== state.controlling) openChat(entry); },
   onClose: () => select(null),
 });
+
+// ------------------------------------------------------------- chat/voice --
+function relFor(aId, bId) {
+  const key = `${Math.min(aId, bId)}-${Math.max(aId, bId)}`;
+  if (!chatRels.has(key)) {
+    const seeded = NPC_DEFS[aId].relationships.find((r) => r.id === bId);
+    chatRels.set(key, {
+      strength: seeded ? seeded.strength : 30,
+      memory: { greeted: false, rng: rngFor(CONFIG.seed, 'chat', key) },
+    });
+  }
+  return chatRels.get(key);
+}
+
+function openChat(entry) {
+  if (!state.controlling || entry === state.controlling) return;
+  state.chatWith = entry;
+  const c = state.controlling;
+  entry.agent.chatWith = c.agent;
+  c.agent.chatWith = entry.agent;
+  entry.agent.chatUntil = state.gameMinutes + 60;
+  c.agent.chatUntil = state.gameMinutes + 60;
+  chatUi.open(entry.def.name, state.lang);
+  sendChat('hola'); // opening line starts the conversation
+}
+
+function closeChat() {
+  if (state.chatWith) state.chatWith.agent.chatWith = null;
+  if (state.controlling) state.controlling.agent.chatWith = null;
+  state.chatWith = null;
+  voice.stop();
+  chatUi.setListening(false);
+  chatUi.close();
+}
+
+function sendChat(text) {
+  const o = state.chatWith;
+  const c = state.controlling;
+  if (!o || !c || !text.trim()) return;
+  chatUi.addMsg('you', text);
+  const rel = relFor(c.id, o.id);
+  const { text: reply, relDelta } = respond({
+    def: o.def, agent: o.agent, rel, playerName: c.def.name,
+    text, lang: state.lang, memory: rel.memory,
+  });
+  rel.strength = Math.max(0, Math.min(100, rel.strength + relDelta));
+  o.agent.needs.social = Math.min(100, o.agent.needs.social + 8);
+  c.agent.needs.social = Math.min(100, c.agent.needs.social + 8);
+  o.agent.chatUntil = state.gameMinutes + 20;
+  o.agent.chatWith = c.agent;
+  chatUi.addMsg('npc', reply);
+  if (voice.ttsAvailable) voice.speak(reply, state.lang);
+  chatUi.focus();
+}
+
+function toggleMic() {
+  if (!voice.micAvailable) { toast(t(state.lang, 'chat.micUnavailable')); return; }
+  if (voice.listening) { voice.stop(); chatUi.setListening(false); return; }
+  const ok = voice.start({
+    lang: state.lang,
+    onResult: (txt) => sendChat(txt),
+    onEnd: () => chatUi.setListening(false),
+    onError: () => { chatUi.setListening(false); toast(t(state.lang, 'chat.micUnavailable')); },
+  });
+  chatUi.setListening(ok);
+}
+
+const chatUi = createChat({
+  onSend: (txt) => sendChat(txt),
+  onMicToggle: toggleMic,
+  micAvailable: voice.micAvailable,
+});
+
+// -------------------------------------------------------------- interiors --
+function nearestTalkable(pos, maxD) {
+  let best = null, bd = maxD;
+  for (const a of agents) {
+    if (state.controlling && a === state.controlling) continue;
+    const d = Math.hypot(a.agent.pos.x - pos.x, a.agent.pos.z - pos.z);
+    if (d < bd) { bd = d; best = a; }
+  }
+  return best;
+}
+
+function nearestEnterable(pos) {
+  // landmark buildings: the place spot is right in front of the door
+  for (const id of Object.keys(PLACES)) {
+    const p = PLACES[id];
+    if (!ENTERABLE.has(p.kind)) continue;
+    if (Math.hypot(pos.x - p.spot.x, pos.z - p.spot.z) < 4.5) {
+      return { kind: p.kind, door: { ...p.spot }, label: t(state.lang, `places.${id}`) };
+    }
+  }
+  // houses / apartments: door at the front centre of the lot
+  const b = worldToBlock(pos.x, pos.z);
+  let best = null, bd = 3.4;
+  for (let i = b.i - 1; i <= b.i + 1; i++) {
+    for (let j = b.j - 1; j <= b.j + 1; j++) {
+      for (const lot of lotsOf(i, j)) {
+        if (lot.kind !== 'house' && lot.kind !== 'apartment') continue;
+        const cx = i * PITCH + lot.ox, cz = j * PITCH + lot.oz;
+        const front = lot.rotY ? -1 : 1;
+        const dx = cx, dz = cz + front * (lot.d / 2 + 0.4);
+        const d = Math.hypot(pos.x - dx, pos.z - dz);
+        if (d < bd) {
+          bd = d;
+          best = {
+            kind: lot.kind === 'apartment' ? 'apartment' : 'home',
+            door: { x: dx, z: dz },
+            label: nearestStreetName(dx, dz),
+          };
+        }
+      }
+    }
+  }
+  return best;
+}
+
+function enterInterior(kind, doorWorld, label) {
+  const spec = INTERIOR_SPECS[kind];
+  if (!spec || !state.controlling) return;
+  const slot = interiors.slotFor(kind);
+  interiors.ensure(kind);
+  state.interior = { kind, spec, slot, door: doorWorld };
+  observer.enterInterior(spec, slot, doorWorld);
+  toast(`${t(state.lang, 'enter.inside')} ${label}`);
+}
+
+function exitInterior() {
+  const cur = state.interior;
+  if (!cur) return;
+  const c = state.controlling;
+  if (c) {
+    c.agent.pos.x = cur.door.x;
+    c.agent.pos.z = cur.door.z;
+    c.agent.moving = false;
+    c.agent.state = 'idle';
+  }
+  state.interior = null;
+  observer.exitInterior();
+}
 
 function hudState() {
   const day = Math.floor(state.gameMinutes / 1440) + 1;
@@ -340,11 +498,18 @@ function tryRefuel() {
 }
 
 window.addEventListener('keydown', (e) => {
+  if (e.target && e.target.tagName === 'INPUT') return; // typing in the chat input
   const k = e.key.toLowerCase();
   if (!state.controlling) return;
   if (k === 'e') {
     if (state.driving) { exitDrive(); return; }
-    const car = nearestCar(state.controlling.agent.pos, 3.6);
+    if (state.interior) { exitInterior(); return; }
+    const pos = state.controlling.agent.pos;
+    const talker = nearestTalkable(pos, 4);
+    if (talker) { openChat(talker); return; }
+    const ent = nearestEnterable(pos);
+    if (ent) { enterInterior(ent.kind, ent.door, ent.label); return; }
+    const car = nearestCar(pos, 3.6);
     if (car) { tryBuyOrEnter(car); return; }
     // bus stop: travel to the main plaza with the bus pass unlock
     const bs = PLACES.busstop.spot;
@@ -486,6 +651,13 @@ function frame(now) {
     a.bubble.visible = (a.agent.chatUntil || 0) > state.gameMinutes && !a.agent.controlled;
   }
 
+  // while inside a building, render the controlled NPC at the room position
+  if (state.interior && state.controlling && observer.roomPos) {
+    const c = state.controlling;
+    c.group.position.set(state.interior.slot.x + observer.roomPos.x, 0, state.interior.slot.z + observer.roomPos.z);
+    c.group.rotation.y = c.agent.heading;
+  }
+
   // driving: fuel consumption + drive HUD + prompt
   if (state.driving) {
     const car = state.driving;
@@ -506,17 +678,28 @@ function frame(now) {
     driveEl.classList.add('hidden');
     // interaction prompt when controlling on foot
     if (state.controlling) {
-      const car = nearestCar(state.controlling.agent.pos, 3.6);
-      if (car) {
-        setPrompt(car.owned ? t(state.lang, 'drive.enter') : `${t(state.lang, 'drive.buy')} ${carPrice(car)}€`);
-      } else if (Math.hypot(state.controlling.agent.pos.x - PLACES.busstop.spot.x, state.controlling.agent.pos.z - PLACES.busstop.spot.z) < 4.5) {
-        setPrompt(state.busPass ? t(state.lang, 'bus.prompt') : t(state.lang, 'bus.needPass'));
+      if (state.interior) {
+        setPrompt(t(state.lang, 'enter.exit'));
       } else {
-        const gas = PLACES.gas.spot;
-        if (Math.hypot(state.controlling.agent.pos.x - gas.x, state.controlling.agent.pos.z - gas.z) < 10
-          && cars.some((c) => c.owned && c.fuel < 99)) {
-          setPrompt(`${t(state.lang, 'drive.refuel')} ${CONFIG.refuelCost}€`);
-        } else setPrompt(null);
+        const pos = state.controlling.agent.pos;
+        const talker = nearestTalkable(pos, 4);
+        const ent = talker ? null : nearestEnterable(pos);
+        if (talker) setPrompt(t(state.lang, 'chat.talkPrompt').replace('{name}', talker.def.name));
+        else if (ent) setPrompt(t(state.lang, 'enter.enter'));
+        else {
+          const car = nearestCar(pos, 3.6);
+          if (car) {
+            setPrompt(car.owned ? t(state.lang, 'drive.enter') : `${t(state.lang, 'drive.buy')} ${carPrice(car)}€`);
+          } else if (Math.hypot(pos.x - PLACES.busstop.spot.x, pos.z - PLACES.busstop.spot.z) < 4.5) {
+            setPrompt(state.busPass ? t(state.lang, 'bus.prompt') : t(state.lang, 'bus.needPass'));
+          } else {
+            const gas = PLACES.gas.spot;
+            if (Math.hypot(pos.x - gas.x, pos.z - gas.z) < 10
+              && cars.some((c) => c.owned && c.fuel < 99)) {
+              setPrompt(`${t(state.lang, 'drive.refuel')} ${CONFIG.refuelCost}€`);
+            } else setPrompt(null);
+          }
+        }
       }
     } else setPrompt(null);
   }
@@ -583,7 +766,41 @@ function frame(now) {
     startScreen.show(agents, state.lang); // clock stays paused until a choice is made
   }
 }
-requestAnimationFrame(frame);
+
+// self-test hook: ?selftest=1 picks the first NPC automatically and reports the result
+// (runs synchronously at module end so it can be read even if the GPU dies later)
+if (qs.get('selftest')) {
+  {
+    const a = agents[0];
+    try {
+      startScreen.hide();
+      state.paused = false;
+      toggleControl(a);
+      openChat(agents[1]);
+      const chatOk = state.chatWith === agents[1] && chatUi.isOpen();
+      enterInterior('market', PLACES.market.spot, 'market');
+      const interiorOk = observer.mode === 'interior' && !!state.interior;
+      exitInterior();
+      window.__SELFTEST = {
+        picked: a.def.name,
+        controlling: state.controlling ? state.controlling.def.name : null,
+        mode: observer.mode,
+        controlled: a.agent.controlled,
+        startHidden: startScreen.visible === false,
+        chatOk,
+        interiorOk,
+        modeAfterExit: observer.mode,
+        error: null,
+      };
+      console.log('SELFTEST-RESULT', JSON.stringify(window.__SELFTEST));
+    } catch (err) {
+      window.__SELFTEST = { error: String((err && err.stack) || err) };
+      console.log('SELFTEST-RESULT', JSON.stringify(window.__SELFTEST));
+    }
+  }
+}
+if (!qs.get('noframe')) requestAnimationFrame(frame); // ?noframe=1 skips the render loop (debug)
+else document.getElementById('boot').style.display = 'none';
 
 // debug handle (no secrets, local only)
-window.__HUMANS = { state, agents, scene, town, sky, observer, workStates, CONFIG, TOWN_NAME };
+window.__HUMANS = { state, agents, scene, town, sky, observer, workStates, CONFIG, TOWN_NAME, interiors, voice, chatUi };

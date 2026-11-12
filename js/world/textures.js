@@ -31,3 +31,33 @@ export function makeTextTexture(text, { w = 512, h = 128, bg = '#1c2547', fg = '
   tex.anisotropy = 4;
   return tex;
 }
+
+// Procedural noise texture (grass, asphalt, concrete, plaster, wood…).
+export function makeNoiseTexture({ base = '#5d8a4a', vary = 22, size = 256, blotches = 0, blotchColor = '#000000', blotchAlpha = 0.08 } = {}) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, size, size);
+  const img = ctx.getImageData(0, 0, size, size);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const n = (Math.random() - 0.5) * 2 * vary;
+    img.data[i] += n;
+    img.data[i + 1] += n;
+    img.data[i + 2] += n;
+  }
+  ctx.putImageData(img, 0, 0);
+  for (let b = 0; b < blotches; b++) {
+    ctx.fillStyle = blotchColor;
+    ctx.globalAlpha = blotchAlpha * (0.5 + Math.random() * 0.5);
+    ctx.beginPath();
+    ctx.ellipse(Math.random() * size, Math.random() * size, 8 + Math.random() * 30, 6 + Math.random() * 22, Math.random() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
