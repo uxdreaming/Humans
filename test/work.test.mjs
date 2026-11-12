@@ -75,6 +75,7 @@ assert.ok(manager && manager.workPlace === 'market');
 // --- unlocks fire once, from approval / tasks / money ---
 {
   const ws = new WorkState(manager);
+  ws.money = 0; // isolate from random starting money
   assert.deepEqual(newlyUnlocked(ws, new Set()), []);
   ws.approval = 80;
   assert.deepEqual(newlyUnlocked(ws, new Set()), ['promotion']);
